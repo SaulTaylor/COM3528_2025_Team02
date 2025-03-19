@@ -2,15 +2,15 @@
 
 import numpy as np
 import os
+import time
+from matplotlib.lines import Line2D
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import rospy
 import miro2 as miro
 from AudioEngine import DetectAudioEngine
 from std_msgs.msg import Int16MultiArray
-from matplotlib.lines import Line2D
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 from geometry_msgs.msg import Twist, TwistStamped
-import time
 from scipy.signal import find_peaks
 from miro2.lib import wheel_speed2cmd_vel
 import pandas as pd
