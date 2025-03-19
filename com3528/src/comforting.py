@@ -42,23 +42,6 @@ class Comforting:
             topic_root + "/control/illum", UInt32MultiArray, queue_size=0
         )
 
-        # Define ROS subscribers
-        rospy.Subscriber(
-            topic_root + "/sensors/touch_head",
-            UInt16,
-            self.touchHeadListener,
-        )
-        rospy.Subscriber(
-            topic_root + "/sensors/touch_body",
-            UInt16,
-            self.touchBodyListener,
-        )
-        rospy.Subscriber(
-            topic_root + "/sensors/light",
-            Float32MultiArray,
-            self.lightCallback,
-        )
-
         # List of action functions
         ##NOTE Try writing your own action functions and adding them here
         self.actions = [
