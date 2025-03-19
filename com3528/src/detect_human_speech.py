@@ -1,5 +1,5 @@
 import numpy as np
-from sound_localizer import SoundLocalizer
+from com3528.src.sound_localizer import SoundLocalizer
 
 def main():
     
