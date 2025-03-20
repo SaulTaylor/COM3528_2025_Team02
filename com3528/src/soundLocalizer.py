@@ -277,10 +277,15 @@ class SoundLocalizer:
         #     self.pub_wheels.publish(self.msg_wheels)
         #     rospy.sleep(0.01)
         #     t0 += 0.01
-        self.msg_wheels.twist.linear.x = 0.0
-        self.msg_wheels.twist.angular.z = azimuth  # Rotate while detecting sound
-        self.pub_wheels.publish(self.msg_wheels)
-        rospy.sleep(1)
+        rotation_time = abs(azimuth) / 0.5  # Time required to turn, assuming 0.5 rad/sec speed
+        time_elapsed = 0
+
+        while time_elapsed < rotation_time:
+            self.msg_wheels.twist.linear.x = 0.0
+            self.msg_wheels.twist.angular.z = np.sign(azimuth) * 0.5  # Rotate at constant speed
+            self.pub_wheels.publish(self.msg_wheels)
+            rospy.sleep(0.1)
+            time_elapsed += 0.1
 
         print(f"I think i have turned {np.rad2deg(azimuth)} degrees")
         self.rotating = False # finished rotating
