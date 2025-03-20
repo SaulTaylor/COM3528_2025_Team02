@@ -12,7 +12,6 @@ from AudioEngine import DetectAudioEngine
 from std_msgs.msg import Int16MultiArray
 from geometry_msgs.msg import Twist, TwistStamped
 from scipy.signal import find_peaks
-from miro2.lib import wheel_speed2cmd_vel
 import pandas as pd
 
 class SoundLocalizer:
@@ -220,10 +219,10 @@ class SoundLocalizer:
                 except Exception as e:
                     print(e)
 
-                print('turning')
+                print('turning then moving toward sound')
                 self.averaging = False
                 an = self.estimate_angle(av1, av2)
-                self.turn_to_sound(an)
+                self.move_to_sound(an)
                 time.sleep(2)
                 self.t1_values = []
                 self.t2_values = []
@@ -258,8 +257,16 @@ class SoundLocalizer:
         print(np.deg2rad(angle))
         return np.deg2rad(angle)
 
-    def turn_to_sound(self, azimuth):
+    def move_to_sound(self, azimuth, min_intensity=500):
+        """
+        Moves MiRo toward the sound source, continuously checking if it remains on the same path.
+        
+        Parameters:
+        - azimuth: Angle to the sound source.
+        - min_intensity: Minimum sound threshold to indicate MiRo is near the human.
+        """
         self.rotating = True
+
         # Turn to the sound source
         tf = 2
         t0 = 0
@@ -271,7 +278,36 @@ class SoundLocalizer:
             rospy.sleep(0.01)
             t0 += 0.01
 
-        self.rotating = False
+        self.rotating = False # finished rotating
+
+        # Move forward while checking sound intensity
+        print("Moving toward the sound source")
+        prev_intensity = 0
+        while True: 
+            # check the latest sound intensity
+            sound_intensity = np.max([
+                np.max(self.left_ear_data), 
+                np.max(self.right_ear_data), 
+                np.max(self.tail_data)
+            ])
+
+            # if sound intensity has stabilised or is low then stop moving
+            if sound_intensity < min_intensity or abs(sound_intensity - prev_intensity) < 50:
+                print("Arrived at the sound source!")
+                break
+
+            prev_intensity = sound_intensity
+
+            # Move forward in the estimated direction
+            self.msg_wheels.twist.linear.x = 0.1
+            self.msg_wheels.twist.angular.z = 0.0
+            self.pub_wheels.publish(self.msg_wheels)
+            rospy.sleep(0.1)  # Short delay before rechecking
+
+        # Stop moving
+        self.msg_wheels.twist.linear.x = 0.0
+        self.pub_wheels.publish(self.msg_wheels)
+
 
 
 # Example of using the class
