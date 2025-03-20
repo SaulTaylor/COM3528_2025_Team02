@@ -44,7 +44,13 @@ class SoundLocalizer:
         else:
             print("No speech detected.")
             return None, None
-
+        
+    def estimate_direction(self):
+            # Direction estimation logic: Can be based on audio delays between microphones
+            direction_x = 0
+            direction_y = 0
+            print(f"Estimated Direction: X: {direction_x}, Y: {direction_y}")
+            return direction_x, direction_y
 
     """ check for speech in the audio frames """
     def is_speech(self, audio_data):
@@ -89,14 +95,6 @@ class SoundLocalizer:
 
       # After turning, drive forward towards the sound
       self.drive_toward_sound(v)
-
-
-    def estimate_direction(self):
-        # Direction estimation logic: Can be based on audio delays between microphones
-        direction_x = 0
-        direction_y = 0
-        print(f"Estimated Direction: X: {direction_x}, Y: {direction_y}")
-        return direction_x, direction_y
     
 
     def drive_toward_sound(self, azimuth):
@@ -162,6 +160,68 @@ class SoundLocalizer:
       data = np.transpose(data.reshape((self.no_of_mics, 500)))
       data = np.flipud(data)
       self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
+
+    def callback_mics(self, data):
+    # data for angular calculation
+        # data for display
+        data = np.asarray(data.data)
+        # 500 samples from each mics
+        data = np.transpose(data.reshape((self.no_of_mics, 500)))  # after this step each row is a sample and each
+        # column is the mag. at that sample time for each mic
+        data = np.flipud(data)  # flips as the data comes in reverse order
+        self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
+        self.left_ear_data = np.flipud(self.input_mics[:, 0])
+        self.right_ear_data = np.flipud(self.input_mics[:, 1])
+        self.head_data = np.flipud(self.input_mics[:, 2])
+        self.tail_data = np.flipud(self.input_mics[:, 3])
+
+        global av1, av2
+        if not self.rotating:
+            
+
+            # t1 and t2 values are used to find the sound source
+            t1, t2, = None, None
+            try:
+
+                # if we are  we don't need to be looking for a sound source
+                if not self.rotating:
+                    t1, t2 = self.process_data()
+            # n, high points were found
+            except Exception as e:
+                t1 = None
+                t2 = None
+
+            # running average for t1 and t2 so long as there are high points
+            # being found then we will assume their from the same source
+            # this should also reduce the error as a result of noise
+
+            # if there's a value  and  we are averaging start tracking
+            if not t1 is None and not self.averaging:
+                self.t1_values.append(t1)
+                self.t2_values.append(t2)
+
+            # if there's no value and we are averaging then stop tracking
+            # as there is no sound source (no high point found)
+            if t1 is None and self.averaging and len(self.t1_values) > 0:
+                try:
+                    # average the values using running average lists
+                    av1, av2 = np.average(self.t1_values), np.average(self.t2_values)
+                    print('running average for t1, t2: ', av1, av2)
+                except Exception as e:
+                    print(e)
+
+                print('turning')
+                self.averaging = False
+                an = self.estimate_angle(av1, av2)
+                self.turn_to_sound(an)
+                time.sleep(2)
+                self.t1_values = []
+                self.t2_values = []
+
+            # sets averaging to true if none and not already averaging
+            self.averaging = t1 is None and not self.averaging
+
+        return None
 
 
 
