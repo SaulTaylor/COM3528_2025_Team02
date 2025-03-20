@@ -76,15 +76,6 @@ class Comforting:
             self.right_ear,
         ) = range(6)
 
-        # Variables for Q-learning algorithm
-        self.reward = 0
-        self.punishment = 0
-        self.Q = [0] * len(self.actions)  # Highest Q value gets to run
-        self.N = [0] * len(self.actions)  # Number of times an action was done
-        self.r = 0  # Current action index
-        self.alpha = 0.7  # learning rate
-        self.discount = 25  # discount factor (anti-damping)
-
         # Give it a sec to make sure everything is initialised
         rospy.sleep(1.0)  
 
