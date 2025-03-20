@@ -253,8 +253,7 @@ class SoundLocalizer:
         if t1 < 0:
             angle -= 45 * abs(t2)/2
         
-        print(angle)
-        print(np.deg2rad(angle))
+        print("angle (degrees): ", angle)
         return np.deg2rad(angle)
 
     def move_to_sound(self, azimuth, min_intensity=500):
@@ -294,6 +293,10 @@ class SoundLocalizer:
             # if sound intensity has stabilised or is low then stop moving
             if sound_intensity < min_intensity or abs(sound_intensity - prev_intensity) < 50:
                 print("Arrived at the sound source!")
+                print("sound_intensity: ", sound_intensity )
+                print("prev_intensity: ", prev_intensity )
+                print("sound_intensity - prev_intensity: ", sound_intensity - prev_intensity )
+
                 break
 
             prev_intensity = sound_intensity
