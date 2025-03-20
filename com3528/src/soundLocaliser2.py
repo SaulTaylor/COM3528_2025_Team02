@@ -185,33 +185,30 @@ class SoundLocalizer:
         self.tail_data = np.flipud(self.input_mics[:, 3])
 
         global av1, av2
-        if not self.rotating:
-            
 
-            # t1 and t2 values are used to find the sound source
+        if not self.rotating:
             t1, t2, = None, None
             try:
-
-                # if we are  we don't need to be looking for a sound source
-                if not self.rotating:
-                    t1, t2 = self.process_data()
-            # n, high points were found
+                t1, t2 = self.process_data()
             except Exception as e:
-                t1 = None
-                t2 = None
+                t1, t2 = None, None
 
             # running average for t1 and t2 so long as there are high points
             # being found then we will assume their from the same source
             # this should also reduce the error as a result of noise
 
             # if there's a value  and  we are averaging start tracking
-            if not t1 is None and not self.averaging:
+            # if not t1 is None and not self.averaging:
+            #     self.t1_values.append(t1)
+            #     self.t2_values.append(t2)
+
+            if t1 is not None:
                 self.t1_values.append(t1)
                 self.t2_values.append(t2)
 
             # if there's no value and we are averaging then stop tracking
             # as there is no sound source (no high point found)
-            if t1 is None and self.averaging and len(self.t1_values) > 0:
+            if len(self.t1_values) > 0:
                 try:
                     # average the values using running average lists
                     av1, av2 = np.average(self.t1_values), np.average(self.t2_values)
@@ -220,17 +217,20 @@ class SoundLocalizer:
                     print(e)
 
                 print('turning then moving toward sound')
-                self.averaging = False
                 an = self.estimate_angle(av1, av2)
                 self.move_to_sound(an)
-                time.sleep(2)
                 self.t1_values = []
                 self.t2_values = []
 
-            # sets averaging to true if none and not already averaging
-            self.averaging = t1 is None and not self.averaging
+            self.averaging = False
+            #     an = self.estimate_angle(av1, av2)
+            #     self.move_to_sound(an)
+            #     time.sleep(2)
+            #     self.t1_values = []
+            #     self.t2_values = []
 
-        return None
+            # # sets averaging to true if none and not already averaging
+            # self.averaging = t1 is None and not self.averaging
 
     @staticmethod
     def estimate_angle(t1, t2):
@@ -253,7 +253,7 @@ class SoundLocalizer:
         if t1 < 0:
             angle -= 45 * abs(t2)/2
         
-        print("angle (degrees): ", angle)
+        print("angle (degrees) to sound source: ", angle)
         return np.deg2rad(angle)
 
     def move_to_sound(self, azimuth, min_intensity=500):
@@ -264,6 +264,31 @@ class SoundLocalizer:
         - azimuth: Angle to the sound source.
         - min_intensity: Minimum sound threshold to indicate MiRo is near the human.
         """
+        self.rotating = True
+
+        # Turn to the sound source
+        print(f"Turning to azimuth {np.rad2deg(azimuth)} degrees")
+        # tf = 2
+        # t0 = 0
+        # while t0 <= tf:
+        #     self.msg_wheels.twist.linear.x = 0.0
+        #     self.msg_wheels.twist.angular.z = azimuth / 2
+
+        #     self.pub_wheels.publish(self.msg_wheels)
+        #     rospy.sleep(0.01)
+        #     t0 += 0.01
+        rotation_time = abs(azimuth) / 0.5  # Time required to turn, assuming 0.5 rad/sec speed
+        time_elapsed = 0
+
+        while time_elapsed < rotation_time:
+            self.msg_wheels.twist.linear.x = 0.0
+            self.msg_wheels.twist.angular.z = np.sign(azimuth) * 0.5  # Rotate at constant speed
+            self.pub_wheels.publish(self.msg_wheels)
+            rospy.sleep(0.1)
+            time_elapsed += 0.1
+
+        print(f"I think i have turned {np.rad2deg(azimuth)} degrees")
+        self.rotating = False # finished rotating
 
         # Move forward while checking sound intensity
         print("Moving toward the sound source")
@@ -276,35 +301,23 @@ class SoundLocalizer:
                 np.max(self.tail_data)
             ])
 
-            # if sound intensity has stabilised or is low then stop moving
-            if sound_intensity < min_intensity or abs(sound_intensity - prev_intensity) < 50:
-                print("Arrived at the sound source!")
+            if sound_intensity >= min_intensity:
+                print("Tracking active sound source...")
+                self.msg_wheels.twist.linear.x = 0.1  # Move forward
+                self.msg_wheels.twist.angular.z = 0.0  # No extra rotation yet
+                self.pub_wheels.publish(self.msg_wheels)
+            else: 
+                print("Sound weakend or stopped, pausing movement")
                 print("sound_intensity: ", sound_intensity )
                 print("prev_intensity: ", prev_intensity )
                 print("sound_intensity - prev_intensity: ", sound_intensity - prev_intensity )
-
                 break
 
             prev_intensity = sound_intensity
 
-            self.rotating = True
-
-            # Turn to the sound source
-            tf = 2
-            t0 = 0
-            while t0 <= tf:
-                self.msg_wheels.twist.linear.x = 0.0
-                self.msg_wheels.twist.angular.z = azimuth / 2
-
-                self.pub_wheels.publish(self.msg_wheels)
-                rospy.sleep(0.01)
-                t0 += 0.01
-
-            self.rotating = False # finished rotating
-
             # Move forward in the estimated direction
             self.msg_wheels.twist.linear.x = 0.1
-            self.msg_wheels.twist.angular.z = 0.0
+            # self.msg_wheels.twist.angular.z = 0.0
             self.pub_wheels.publish(self.msg_wheels)
             rospy.sleep(0.1)  # Short delay before rechecking
 
