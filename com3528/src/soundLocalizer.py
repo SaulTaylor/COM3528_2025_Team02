@@ -267,32 +267,28 @@ class SoundLocalizer:
         self.rotating = True
 
         # Turn to the sound source
+        target_degrees = np.rad2deg(azimuth)  # Convert radians to degrees for easier debugging
         print(f"Turning to azimuth {np.rad2deg(azimuth)} degrees")
-        # tf = 2
-        # t0 = 0
-        # while t0 <= tf:
-        #     self.msg_wheels.twist.linear.x = 0.0
-        #     self.msg_wheels.twist.angular.z = azimuth / 2
+        angular_speed = 0.6
+        rotation_time = abs(target_degrees) / (angular_speed * 57.3)  # Time required to turn
 
-        #     self.pub_wheels.publish(self.msg_wheels)
-        #     rospy.sleep(0.01)
-        #     t0 += 0.01
-        rotation_time = abs(azimuth) / 0.5  # Time required to turn, assuming 0.5 rad/sec speed
-        time_elapsed = 0
-
-        while time_elapsed < rotation_time:
-            self.msg_wheels.twist.linear.x = 0.0
-            self.msg_wheels.twist.angular.z = np.sign(azimuth) * 0.5  # Rotate at constant speed
+        start_time = rospy.Time.now().to_sec()
+        while (rospy.Time.now().to_sec() - start_time) < rotation_time:
+            self.msg_wheels.twist.linear.x = 0.0  # No forward movement
+            self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed  # Rotate in the correct direction
             self.pub_wheels.publish(self.msg_wheels)
-            rospy.sleep(0.1)
-            time_elapsed += 0.1
+            rospy.sleep(0.1)  # Keep checking
+
+        # Stop rotation
+        self.msg_wheels.twist.angular.z = 0.0
+        self.pub_wheels.publish(self.msg_wheels)
+        print(f"I think I have turned {target_degrees} degrees")
 
         print(f"I think i have turned {np.rad2deg(azimuth)} degrees")
         self.rotating = False # finished rotating
 
         # Move forward while checking sound intensity
         print("Moving toward the sound source")
-        prev_intensity = 0
         while True: 
             # check the latest sound intensity
             sound_intensity = np.max([
@@ -303,26 +299,23 @@ class SoundLocalizer:
 
             if sound_intensity >= min_intensity:
                 print("Tracking active sound source...")
+                self.msg_wheels.header.stamp = rospy.Time.now()
                 self.msg_wheels.twist.linear.x = 0.1  # Move forward
                 self.msg_wheels.twist.angular.z = 0.0  # No extra rotation yet
                 self.pub_wheels.publish(self.msg_wheels)
             else: 
                 print("Sound weakend or stopped, pausing movement")
                 print("sound_intensity: ", sound_intensity )
-                print("prev_intensity: ", prev_intensity )
-                print("sound_intensity - prev_intensity: ", sound_intensity - prev_intensity )
                 break
-
-            prev_intensity = sound_intensity
 
             # Move forward in the estimated direction
             self.msg_wheels.twist.linear.x = 0.1
-            # self.msg_wheels.twist.angular.z = 0.0
+            self.msg_wheels.twist.angular.z = 0.0
             self.pub_wheels.publish(self.msg_wheels)
             rospy.sleep(0.1)  # Short delay before rechecking
 
         # Stop moving
-        self.msg_wheels.twist.linear.x = 0.0
+        self.msg_wheels.twist.linear.x = 0.0    
         self.pub_wheels.publish(self.msg_wheels)
 
 
