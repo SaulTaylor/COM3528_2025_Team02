@@ -1,0 +1,29 @@
+Windows :
+1. Install anaconda 
+2. Install VS build tools (Make sure C++ development is ticked and MSVC v142 2019 is ticked)
+3. Set up conda environment at python 3.9
+4. Install pip through conda
+5. Open the terminal
+6. Switch to conda environment
+7. Navigate to the project directory 
+8. Run the pip install in the build tool directory (pip install the requirements file, then all the imported packages)
+9. Now should be able to run the code from the vs code terminal in the app
+
+How The Model Works :
+Emotion Detection :
+1. Change the file path to the desired pretrained model to be used.
+2. Run the program.
+3. Wait for the recording indicator.
+4. Record your audio (5 second clip)
+5. Emotion displayed
+
+Training :
+*NOTE* The model has currently been trained on ravdess (An English emotion database) and their is a model for emodb (A German emotion database)
+*NOTE* The database is full of actors saying sentences in different emotions, therefor a larger more application relevant database would be more ideal.
+
+1. Change the database to be downloaded in the code.
+2. Change the name of the model file to be created to something unique (.plt file)
+3. The handling of database data will also have to be changed so it can be extracted effectively.
+4. Run the program
+5. An output assessing the quality of the program will appear after training.
+6. The new model file can now be used to predict emotions.
