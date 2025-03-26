@@ -14,6 +14,10 @@ from geometry_msgs.msg import Twist, TwistStamped
 from scipy.signal import find_peaks
 import pandas as pd
 from scipy.io import wavfile
+import tf.transformations as tf_trans  # Converts quaternion to Euler angles
+from geometry_msgs.msg import PoseStamped
+
+
 
 """ ----------------------------- FILE OVERVIEW -----------------------------
 This file aims to detect an audio event, run it through a model to get the emotion,
@@ -79,7 +83,17 @@ class SoundLocalizer:
         self.t1_values = []
         self.t2_values = []
 
+        self.current_yaw = 0.0
+        rospy.Subscriber(topic_base_name + "/sensors/pose", PoseStamped, self.callback_pose)
+
+
         print("init success")
+
+    def callback_pose(self, msg):
+        orientation_q = msg.pose.orientation
+        q = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        _, _, yaw = tf_trans.euler_from_quaternion(q)  # Get yaw in radians
+        self.current_yaw = yaw
 
     def gcc(self, mic1, mic2):
         # Generalized Cross-Correlation implemented as in AudioEngine.py
@@ -302,12 +316,36 @@ class SoundLocalizer:
         rotation_time = abs(target_degrees) / (angular_speed * 57.3)  # Time required to turn
         print(f"I'm rotating with speed {angular_speed} for {rotation_time} seconds")
 
+        # start_time = rospy.Time.now().to_sec()
+        # while (rospy.Time.now().to_sec() - start_time) < rotation_time:
+        #     self.msg_wheels.twist.linear.x = 0.0  # No forward movement
+        #     self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed  # Rotate in the correct direction
+        #     print("self.msg_wheels.twist.angular.z: ", self.msg_wheels.twist.angular.z)
+        #     self.pub_wheels.publish(self.msg_wheels)
+        #     rospy.sleep(0.1)  # Keep checking
+        # Get angle before turning
+        
+        start_yaw = self.current_yaw
+        print(f"Start yaw: {np.rad2deg(start_yaw):.2f} degrees")
+
         start_time = rospy.Time.now().to_sec()
         while (rospy.Time.now().to_sec() - start_time) < rotation_time:
-            self.msg_wheels.twist.linear.x = 0.0  # No forward movement
-            self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed  # Rotate in the correct direction
+            self.msg_wheels.twist.linear.x = 0.0
+            self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed
             self.pub_wheels.publish(self.msg_wheels)
-            rospy.sleep(0.1)  # Keep checking
+            rospy.sleep(0.1)
+
+        # Get angle after turning
+        end_yaw = self.current_yaw
+        print(f"End yaw: {np.rad2deg(end_yaw):.2f} degrees")
+
+        # Calculate change in angle
+        delta_yaw = end_yaw - start_yaw
+        delta_degrees = (np.rad2deg(delta_yaw) + 360) % 360  # Normalize between 0-360
+        if delta_degrees > 180:
+            delta_degrees -= 360  # Normalize to -180 to 180
+
+        print(f"Total angle turned: {delta_degrees:.2f} degrees")
 
         # Stop rotation
         self.msg_wheels.twist.angular.z = 0.0
