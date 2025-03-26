@@ -132,6 +132,8 @@ class SoundLocalizer:
 
     @staticmethod
     def find_high_peaks(audio_data):
+        # Height parameter acts as a threshold for which peaks are detected
+        # The higher the less sensitive to background noise
         peaks, _ = find_peaks(audio_data, height=0.6)
 
         return peaks
@@ -175,6 +177,8 @@ class SoundLocalizer:
             # Get the common high point with the largest accumulative value
             max_common_high_point = list(common_high_points)[max_index]
 
+            # Threshold acts as a second filter to height parameter in find_high_peaks
+            # Works for the common high points rather than the regular high points
             threshold = 600
             # check that common values reach threshold
             if max(common_values_l) < threshold or max(common_values_r) < threshold or max(common_values_t) < threshold:
