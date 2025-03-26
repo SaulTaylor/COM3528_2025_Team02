@@ -265,12 +265,12 @@ class SoundLocalizer:
     def estimate_angle(t1, t2):
 
         # t1 time delay between left and right ear
-          # positive then sound source is on right ear
-          # negative then sound source is on left ear
+        # positive then sound source is on right ear
+        # negative then sound source is on left ear
 
         # t2 time delay between left ear and tail
-          # positive if in front
-          # negative if behind 
+        # positive if in front
+        # negative if behind 
 
         angle = 0
         if t2 >= 0:  # then the sound is coming from behind
@@ -300,7 +300,6 @@ class SoundLocalizer:
         print(f"Turning to azimuth {np.rad2deg(azimuth)} degrees")
         angular_speed = 0.6
         rotation_time = abs(target_degrees) / (angular_speed * 57.3)  # Time required to turn
-        print(f"I'm rotating with speed {angular_speed} for {rotation_time} seconds")
 
         start_time = rospy.Time.now().to_sec()
         while (rospy.Time.now().to_sec() - start_time) < rotation_time:
