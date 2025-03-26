@@ -150,6 +150,10 @@ class SoundLocalizer:
         peak_r = self.find_high_peaks(self.right_ear_data)
         peak_t = self.find_high_peaks(self.tail_data)
 
+        print(f"Left peak: {peak_l}")
+        print(f"Right peak: {peak_r}")
+        print(f"Tail peak: {peak_t}")
+
         # find a common points
         # Convert to sets
         set_l_peak = set(peak_l)
