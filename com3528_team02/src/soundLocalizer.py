@@ -301,6 +301,9 @@ class SoundLocalizer:
             angle -= 45 * abs(t2)/2
         
         print("angle (degrees) to sound source: ", angle)
+        if angle > 360:
+            angle = angle - 360
+        
         return np.deg2rad(angle)
 
     def move_to_sound(self, azimuth, min_intensity=500):
@@ -328,7 +331,7 @@ class SoundLocalizer:
         #     self.pub_wheels.publish(self.msg_wheels)
         #     rospy.sleep(0.1)  # Keep checking
         # Get angle before turning
-        
+
         start_yaw = self.current_yaw
         print(f"Start yaw: {np.rad2deg(start_yaw):.2f} degrees")
 
