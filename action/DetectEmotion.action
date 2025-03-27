@@ -1,0 +1,8 @@
+# ====== GOAL ======
+uint8[] audio_data         # raw bytes of the .wav file
+---
+# ====== RESULT ======
+string detected_emotion    # e.g., "happy", "angry", "fear"
+---
+# ====== FEEDBACK ======
+string current_status      # e.g., "Processing", "Analyzing Audio"
