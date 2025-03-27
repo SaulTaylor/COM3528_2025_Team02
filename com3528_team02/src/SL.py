@@ -13,6 +13,33 @@ from std_msgs.msg import Int16MultiArray
 from geometry_msgs.msg import Twist, TwistStamped
 from scipy.signal import find_peaks
 import pandas as pd
+from scipy.io import wavfile
+import tf.transformations as tf_trans  # Converts quaternion to Euler angles
+from nav_msgs.msg import Odometry
+
+
+
+""" ----------------------------- FILE OVERVIEW -----------------------------
+This file aims to detect an audio event, run it through a model to get the emotion,
+if that emotion is 'angry', 'sad' or 'fearful' then locate where the human sound is
+coming from and move towards them. 
+
+The code currently performs the following main tasks:
+
+1. Subscribes to the robot's microphone data stream and buffers incoming audio.
+2. Identifies peaks in the audio signals to detect sound events.
+3. Uses cross-correlation and generalized cross-correlation to estimate time 
+   delays between microphones and infer the direction (angle) of the sound source.
+4. Turns the robot toward the detected sound and moves it forward as long as the
+   sound remains above a minimum threshold.
+5. Records a segment of audio as a .wav file when sound is detected.
+6. (Planned) Runs the recorded audio through a machine learning model (e.g. Whisper
+   or sound classification model) to classify or transcribe the sound and get a string label.
+7. (Planned) The robot can then react based on the label returned
+   (e.g. approach a person who is arguing).
+The class `SoundLocalizer` handles all functionality including subscribing to
+ROS topics, audio processing, angle estimation, robot movement, and model inference.
+"""
 
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
@@ -56,7 +83,17 @@ class SoundLocalizer:
         self.t1_values = []
         self.t2_values = []
 
+        self.current_yaw = 0.0
+        rospy.Subscriber(topic_base_name + "/sensors/odom", Odometry, self.callback_pose)
+
+
         print("init success")
+
+    def callback_pose(self, msg):
+        orientation_q = msg.pose.pose.orientation
+        q = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        _, _, yaw = tf_trans.euler_from_quaternion(q)  # Get yaw in radians
+        self.current_yaw = yaw
 
     def gcc(self, mic1, mic2):
         # Generalized Cross-Correlation implemented as in AudioEngine.py
@@ -95,6 +132,8 @@ class SoundLocalizer:
 
     @staticmethod
     def find_high_peaks(audio_data):
+        # Height parameter acts as a threshold for which peaks are detected
+        # The higher the less sensitive to background noise
         peaks, _ = find_peaks(audio_data, height=0.6)
 
         return peaks
@@ -138,6 +177,8 @@ class SoundLocalizer:
             # Get the common high point with the largest accumulative value
             max_common_high_point = list(common_high_points)[max_index]
 
+            # Threshold acts as a second filter to height parameter in find_high_peaks
+            # Works for the common high points rather than the regular high points
             threshold = 600
             # check that common values reach threshold
             if max(common_values_l) < threshold or max(common_values_r) < threshold or max(common_values_t) < threshold:
@@ -148,24 +189,42 @@ class SoundLocalizer:
             max_common_block_r = self.create_block(max_common_high_point, self.right_ear_data)
             max_common_block_t = self.create_block(max_common_high_point, self.tail_data)
 
-            x1_l_r = np.correlate(max_common_block_l, max_common_block_r, mode='same')
-            x2_l_t  = np.correlate(max_common_block_l, max_common_block_t, mode='same')
-            x_r_t  = np.correlate(max_common_block_r, max_common_block_t, mode='same')
+            # x1_l_r = np.correlate(max_common_block_l, max_common_block_r, mode='same')
+            
+            # x2_l_t  = np.correlate(max_common_block_l, max_common_block_t, mode='same')
+            # x_r_t  = np.correlate(max_common_block_r, max_common_block_t, mode='same')
 
-            r1_hat = np.argmax(x1_l_r) 
-            r2_hat = np.argmax(x2_l_t)
+            # r1_hat = np.argmax(x1_l_r) 
+            # r2_hat = np.argmax(x2_l_t)
 
-            t1_1 = np.cos(r1_hat * 343) / .1
-            t2_1 = np.cos(r2_hat * 343) / .25
+            # t1_1 = np.cos(r1_hat * 343) / .1
+            # t2_1 = np.cos(r2_hat * 343) / .25
 
+            # print(t1_1, t2_1)
 
+            # return t1_1, t2_1
 
+            # Constants
+            speed_of_sound = 343      # m/s
+            fs = 16000                # sampling rate in Hz
+            mic_dist_lr = 0.1         # distance between L and R mic in metres
+            mic_dist_lt = 0.25        # L to tail mic (used for front/back)
 
+            # Use GCC to estimate sample delays
+            delay_samples_lr = self.gcc(max_common_block_l, max_common_block_r)
+            delay_samples_lt = self.gcc(max_common_block_l, max_common_block_t)
 
+            # Convert sample delays to time delays (seconds)
+            time_delay_lr = delay_samples_lr / fs
+            time_delay_lt = delay_samples_lt / fs
 
-            print(t1_1, t2_1)
+            # Clip for safety in arcsin range
+            arg = np.clip((time_delay_lr * speed_of_sound) / mic_dist_lr, -1.0, 1.0)
+            azimuth_rad = np.arcsin(arg)  # left/right angle in radians
 
-            return t1_1, t2_1
+            # Store values for return and further processing
+            return azimuth_rad, time_delay_lt
+        
         except Exception as e:
             print("No common high points")
             return None, None
@@ -232,29 +291,63 @@ class SoundLocalizer:
             # # sets averaging to true if none and not already averaging
             # self.averaging = t1 is None and not self.averaging
 
-    @staticmethod
-    def estimate_angle(t1, t2):
 
-        # t1 time delay between left and right ear
-        # positive then sound source is on right ear
-        # negative then sound source is on left ear
+    def save_audio_to_wav(self, filename="get_emotion_from_audio.wav", mic_index=0, sample_rate=16000):
+        """
+        Save audio from left ear (index 0) microphone to a .wav file
+        """
+        audio_data = self.input_mics[:, mic_index]
+        audio_data = np.int16(audio_data / np.max(np.abs(audio_data)) * 32767)  # Normalize to int16
+        wavfile.write(filename, sample_rate, audio_data)
+        print(f"Saved audio to {filename}")
 
-        # t2 time delay between left ear and tail
-        # positive if in front
-        # negative if behind 
 
-        angle = 0
-        if t2 >= 0:  # then the sound is coming from behind
-            angle += 0
-        if t2 < 0:
-            angle += 180 
-        if t1 > 0:
-            angle += 45 * abs(t1)/2
-        if t1 < 0:
-            angle -= 45 * abs(t2)/2
+    # @staticmethod
+    # def estimate_angle(t1, t2):
+
+    #     # t1 time delay between left and right ear
+    #       # positive then sound source is on right ear
+    #       # negative then sound source is on left ear
+
+    #     # t2 time delay between left ear and tail
+    #       # positive if in front
+    #       # negative if behind 
+
+    #     angle = 0
+    #     if t2 >= 0:  # then the sound is coming from behind
+    #         angle += 0
+    #     if t2 < 0:
+    #         angle += 180 
+    #     if t1 > 0:
+    #         angle += 45 * abs(t1)/2
+    #     if t1 < 0:
+    #         angle -= 45 * abs(t2)/2
         
-        print("angle (degrees) to sound source: ", angle)
-        return np.deg2rad(angle)
+    #     print("angle (degrees) to sound source: ", angle)
+    #     if angle > 360:
+    #         angle = angle - 360
+        
+    #     return np.deg2rad(angle)
+
+    @staticmethod
+    def estimate_angle(azimuth_rad, time_delay_lt, mic_dist_lt=0.25, fs=16000):
+        """
+        Convert time delay into an azimuth (horizontal angle) and determine
+        front/back based on L–Tail delay.
+        Includes debug prints to describe direction.
+        """
+        angle_deg = np.rad2deg(azimuth_rad)
+        print(f"[DEBUG] Raw azimuth (from L-R delay): {angle_deg:.2f} degrees")
+
+        if time_delay_lt < 0:
+            print("[INFO] Tail mic heard the sound earlier than the left mic → Sound is BEHIND")
+            angle_deg = (180 + angle_deg) % 360
+        else:
+            print("[INFO] Left mic heard the sound before the tail mic → Sound is IN FRONT")
+
+        print(f"[INFO] Final estimated direction to sound: {angle_deg:.2f} degrees")
+        return np.deg2rad(angle_deg)
+
 
     def move_to_sound(self, azimuth, min_intensity=500):
         """
@@ -268,16 +361,41 @@ class SoundLocalizer:
 
         # Turn to the sound source
         target_degrees = np.rad2deg(azimuth)  # Convert radians to degrees for easier debugging
-        print(f"Turning to azimuth {np.rad2deg(azimuth)} degrees")
+        print(f"[ACTION] Preparing to rotate to {np.rad2deg(azimuth):.2f} degrees")
         angular_speed = 0.6
         rotation_time = abs(target_degrees) / (angular_speed * 57.3)  # Time required to turn
+        print(f"I'm rotating with speed {angular_speed} for {rotation_time} seconds")
+
+        # start_time = rospy.Time.now().to_sec()
+        # while (rospy.Time.now().to_sec() - start_time) < rotation_time:
+        #     self.msg_wheels.twist.linear.x = 0.0  # No forward movement
+        #     self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed  # Rotate in the correct direction
+        #     print("self.msg_wheels.twist.angular.z: ", self.msg_wheels.twist.angular.z)
+        #     self.pub_wheels.publish(self.msg_wheels)
+        #     rospy.sleep(0.1)  # Keep checking
+        # Get angle before turning
+
+        start_yaw = self.current_yaw
 
         start_time = rospy.Time.now().to_sec()
+        print(f"I'm about to turn for {rotation_time} seconds")
         while (rospy.Time.now().to_sec() - start_time) < rotation_time:
-            self.msg_wheels.twist.linear.x = 0.0  # No forward movement
-            self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed  # Rotate in the correct direction
+            self.msg_wheels.twist.linear.x = 0.0
+            self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed
             self.pub_wheels.publish(self.msg_wheels)
-            rospy.sleep(0.1)  # Keep checking
+            print(f"I have been rotating for : {rospy.Time.now().to_sec() - start_time} seconds")
+            rospy.sleep(0.1)
+
+        # Get angle after turning
+        end_yaw = self.current_yaw
+
+        # Calculate change in angle
+        delta_yaw = end_yaw - start_yaw
+        delta_degrees = (np.rad2deg(delta_yaw) + 360) % 360  # Normalize between 0-360
+        if delta_degrees > 180:
+            delta_degrees -= 360  # Normalize to -180 to 180
+
+        print(f"Actual angle turned: {delta_degrees:.2f} degrees")
 
         # Stop rotation
         self.msg_wheels.twist.angular.z = 0.0
