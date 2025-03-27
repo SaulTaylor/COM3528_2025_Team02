@@ -15,7 +15,7 @@ from scipy.signal import find_peaks
 import pandas as pd
 from scipy.io import wavfile
 import tf.transformations as tf_trans  # Converts quaternion to Euler angles
-from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
 
 
 
@@ -84,13 +84,13 @@ class SoundLocalizer:
         self.t2_values = []
 
         self.current_yaw = 0.0
-        rospy.Subscriber(topic_base_name + "/sensors/pose", PoseStamped, self.callback_pose)
+        rospy.Subscriber(topic_base_name + "/sensors/odom", Odometry, self.callback_pose)
 
 
         print("init success")
 
     def callback_pose(self, msg):
-        orientation_q = msg.pose.orientation
+        orientation_q = msg.pose.pose.orientation
         q = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         _, _, yaw = tf_trans.euler_from_quaternion(q)  # Get yaw in radians
         self.current_yaw = yaw
