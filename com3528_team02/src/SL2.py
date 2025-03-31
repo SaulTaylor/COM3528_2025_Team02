@@ -366,25 +366,27 @@ class SoundLocalizer:
         rotation_time = abs(target_degrees) / (angular_speed * 57.3)  # Time required to turn
         print(f"I'm rotating with speed {angular_speed} for {rotation_time} seconds")
 
-        # start_time = rospy.Time.now().to_sec()
-        # while (rospy.Time.now().to_sec() - start_time) < rotation_time:
-        #     self.msg_wheels.twist.linear.x = 0.0  # No forward movement
-        #     self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed  # Rotate in the correct direction
-        #     print("self.msg_wheels.twist.angular.z: ", self.msg_wheels.twist.angular.z)
-        #     self.pub_wheels.publish(self.msg_wheels)
-        #     rospy.sleep(0.1)  # Keep checking
-        # Get angle before turning
-
         start_yaw = self.current_yaw
+        angle_tolerance = 5.0  # degrees
 
-        start_time = rospy.Time.now().to_sec()
-        print(f"I'm about to turn for {rotation_time} seconds")
-        while (rospy.Time.now().to_sec() - start_time) < rotation_time:
+        while True:
+            current_deg = np.rad2deg(self.current_yaw) % 360
+            target_deg = np.rad2deg(azimuth) % 360
+            angle_diff = self.angular_difference(target_deg, current_deg)
+
+            print(f"[TURNING] Current Yaw: {current_deg:.2f}° | Target: {target_deg:.2f}° | Δ: {angle_diff:.2f}°")
+
+            if abs(angle_diff) <= angle_tolerance:
+                print("[TURNING] Reached target direction within tolerance.")
+                break
+
             self.msg_wheels.twist.linear.x = 0.0
-            self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed
+            self.msg_wheels.twist.angular.z = np.sign(angle_diff) * angular_speed
             self.pub_wheels.publish(self.msg_wheels)
-            print(f"I have been rotating for : {rospy.Time.now().to_sec() - start_time} seconds")
             rospy.sleep(0.1)
+
+        self.msg_wheels.twist.angular.z = 0.0
+        self.pub_wheels.publish(self.msg_wheels)
 
         # Get angle after turning
         end_yaw = self.current_yaw
@@ -436,7 +438,13 @@ class SoundLocalizer:
         self.msg_wheels.twist.linear.x = 0.0    
         self.pub_wheels.publish(self.msg_wheels)
 
-
+    def angular_difference(self, target_deg, current_deg):
+        """
+        Returns the smallest signed angle difference from current to target.
+        Range: [-180, 180] degrees.
+        """
+        diff = (target_deg - current_deg + 180) % 360 - 180
+        return diff
 
 # Example of using the class
 if __name__ == '__main__':
