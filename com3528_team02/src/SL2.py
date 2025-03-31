@@ -277,19 +277,15 @@ class SoundLocalizer:
 
                 print('turning then moving toward sound')
                 an = self.estimate_angle(av1, av2)
-                self.move_to_sound(an)
+                if an is not None:
+                  self.move_to_sound(an)
+                else:
+                  print("angle to detected sound source is None")
+                  
                 self.t1_values = []
                 self.t2_values = []
 
             self.averaging = False
-            #     an = self.estimate_angle(av1, av2)
-            #     self.move_to_sound(an)
-            #     time.sleep(2)
-            #     self.t1_values = []
-            #     self.t2_values = []
-
-            # # sets averaging to true if none and not already averaging
-            # self.averaging = t1 is None and not self.averaging
 
 
     def save_audio_to_wav(self, filename="get_emotion_from_audio.wav", mic_index=0, sample_rate=16000):
@@ -301,34 +297,6 @@ class SoundLocalizer:
         wavfile.write(filename, sample_rate, audio_data)
         print(f"Saved audio to {filename}")
 
-
-    # @staticmethod
-    # def estimate_angle(t1, t2):
-
-    #     # t1 time delay between left and right ear
-    #       # positive then sound source is on right ear
-    #       # negative then sound source is on left ear
-
-    #     # t2 time delay between left ear and tail
-    #       # positive if in front
-    #       # negative if behind 
-
-    #     angle = 0
-    #     if t2 >= 0:  # then the sound is coming from behind
-    #         angle += 0
-    #     if t2 < 0:
-    #         angle += 180 
-    #     if t1 > 0:
-    #         angle += 45 * abs(t1)/2
-    #     if t1 < 0:
-    #         angle -= 45 * abs(t2)/2
-        
-    #     print("angle (degrees) to sound source: ", angle)
-    #     if angle > 360:
-    #         angle = angle - 360
-        
-    #     return np.deg2rad(angle)
-
     @staticmethod
     def estimate_angle(azimuth_rad, time_delay_lt, mic_dist_lt=0.25, fs=16000):
         """
@@ -339,11 +307,17 @@ class SoundLocalizer:
         angle_deg = np.rad2deg(azimuth_rad)
         print(f"[DEBUG] Raw azimuth (from L-R delay): {angle_deg:.2f} degrees")
 
-        if time_delay_lt < 0:
-            print("[INFO] Tail mic heard the sound earlier than the left mic → Sound is BEHIND")
+        front_back_threshold = 0.00015  # ≈2.4 samples at 16kHz
+        print(f"[DEBUG] Time delay L–Tail: {time_delay_lt:.6f} s")
+        if time_delay_lt < -front_back_threshold:
+            print("[INFO] Tail mic clearly heard the sound earlier → Sound is BEHIND")
             angle_deg = (180 + angle_deg) % 360
+        elif time_delay_lt > front_back_threshold:
+            print("[INFO] Left mic clearly heard it first → Sound is IN FRONT")
+            # keep angle_deg as-is
         else:
-            print("[INFO] Left mic heard the sound before the tail mic → Sound is IN FRONT")
+            print("[WARNING] L–Tail delay too small to determine direction confidently → Skipping ")
+            return None  # if you want to skip bad reads
 
         print(f"[INFO] Final estimated direction to sound: {angle_deg:.2f} degrees")
         return np.deg2rad(angle_deg)
@@ -363,18 +337,19 @@ class SoundLocalizer:
         target_degrees = np.rad2deg(azimuth)  # Convert radians to degrees for easier debugging
         print(f"[ACTION] Preparing to rotate to {np.rad2deg(azimuth):.2f} degrees")
         angular_speed = 0.6
-        rotation_time = abs(target_degrees) / (angular_speed * 57.3)  # Time required to turn
+        rotation_time = abs(angle_diff) / (angular_speed * 57.3)  # Time required to turn
         print(f"I'm rotating with speed {angular_speed} for {rotation_time} seconds")
 
         start_yaw = self.current_yaw
         angle_tolerance = 5.0  # degrees
 
         while True:
-            current_deg = np.rad2deg(self.current_yaw) % 360
+            current_yaw_deg = (np.rad2deg(self.current_yaw) + 360) % 360
             target_deg = np.rad2deg(azimuth) % 360
-            angle_diff = self.angular_difference(target_deg, current_deg)
+            angle_diff = self.angular_difference(target_deg, current_yaw_deg)
+            rotation_time = abs(angle_diff) / (angular_speed * 57.3)
 
-            print(f"[TURNING] Current Yaw: {current_deg:.2f}° | Target: {target_deg:.2f}° | Δ: {angle_diff:.2f}°")
+            print(f"[TURNING] Current Yaw: {current_yaw_deg:.2f}° | Target: {target_deg:.2f}° | Δ: {angle_diff:.2f}°")
 
             if abs(angle_diff) <= angle_tolerance:
                 print("[TURNING] Reached target direction within tolerance.")
