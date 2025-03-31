@@ -233,20 +233,20 @@ class SoundLocalizer:
 
         global av1, av2
 
-        if not self.processing_audio:
-            print("Not processing audio; returning...")
-            return
-        
         self.processing_audio = True
 
         if not self.rotating:
             t1, t2, = None, None
             try:
-                t1, t2 = self.process_data()
+                if self.processing_audio == True:
+                    t1, t2 = self.process_data()
+                    self.processing_audio = False
+                else:
+                    t1, t2 = None, None
+                    self.processing_audio = True
             except Exception as e:
                 t1, t2 = None, None
             
-            self.processing_audio = False
 
             # running average for t1 and t2 so long as there are high points
             # being found then we will assume their from the same source
@@ -286,7 +286,6 @@ class SoundLocalizer:
 
             # # sets averaging to true if none and not already averaging
             # self.averaging = t1 is None and not self.averaging
-
 
     def save_audio_to_wav(self, filename="get_emotion_from_audio.wav", mic_index=0, sample_rate=16000):
         """
