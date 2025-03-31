@@ -233,7 +233,7 @@ class SoundLocalizer:
 
         global av1, av2
 
-        if self.processing_audio:
+        if not self.processing_audio:
             return
         self.processing_audio = True
 
