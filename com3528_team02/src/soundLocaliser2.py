@@ -234,11 +234,13 @@ class SoundLocalizer:
         global av1, av2
 
         if not self.processing_audio:
+            print("Not processing audio; returning...")
             return
-        self.processing_audio = True
+
 
         if not self.rotating:
             t1, t2, = None, None
+            self.processing_audio = True
             try:
                 t1, t2 = self.process_data()
             except Exception as e:
