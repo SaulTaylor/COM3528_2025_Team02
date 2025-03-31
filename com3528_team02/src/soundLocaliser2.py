@@ -138,7 +138,7 @@ class SoundLocalizer:
     def find_high_peaks(audio_data):
         # Height parameter acts as a threshold for which peaks are detected
         # The higher the less sensitive to background noise
-        peaks, _ = find_peaks(audio_data, height=0.6)
+        peaks, _ = find_peaks(audio_data, height=0.7)
 
         return peaks
 
@@ -183,7 +183,7 @@ class SoundLocalizer:
 
             # Threshold acts as a second filter to height parameter in find_high_peaks
             # Works for the common high points rather than the regular high points
-            threshold = 600
+            threshold = 700
             # check that common values reach threshold
             if max(common_values_l) > threshold or max(common_values_r) > threshold or max(common_values_t) > threshold:
 
@@ -191,6 +191,10 @@ class SoundLocalizer:
                     print("Common points exceed threshold")
                     self.save_audio_to_wav(self.left_ear_data)
                     self.audio_saved = True  # Set the flag to True after saving audio
+                
+                if self.audio_saved:
+                    print("Audio already saved, skipping.")
+                    return None, None
 
                 # Get block around max common high point
                 max_common_block_l = self.create_block(max_common_high_point, self.left_ear_data)
@@ -234,18 +238,13 @@ class SoundLocalizer:
         global av1, av2
 
         self.processing_audio = True
-
-        if not self.rotating:
-            t1, t2, = None, None
-            try:
-                if self.processing_audio == True:
-                    t1, t2 = self.process_data()
-                    self.processing_audio = False
-                else:
-                    t1, t2 = None, None
-                    self.processing_audio = True
-            except Exception as e:
-                t1, t2 = None, None
+    
+        try:
+            t1, t2 = self.process_data()  # Process audio data
+        except Exception as e:
+            t1, t2 = None, None
+        finally:
+            self.processing_audio = False  # Ensure flag is reset
             
 
             # running average for t1 and t2 so long as there are high points
