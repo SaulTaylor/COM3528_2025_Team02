@@ -187,7 +187,7 @@ class SoundLocalizer:
             # check that common values reach threshold
             if max(common_values_l) > threshold or max(common_values_r) > threshold or max(common_values_t) > threshold:
 
-                if self.audio_saved == False:  # Only save audio if it hasn't been saved already
+                if not self.audio_saved:  # Only save audio if it hasn't been saved already
                     print("Common points exceed threshold")
                     self.save_audio_to_wav(self.left_ear_data)
                     self.audio_saved = True  # Set the flag to True after saving audio
@@ -236,11 +236,11 @@ class SoundLocalizer:
         if not self.processing_audio:
             print("Not processing audio; returning...")
             return
-
+        
+        self.processing_audio = True
 
         if not self.rotating:
             t1, t2, = None, None
-            self.processing_audio = True
             try:
                 t1, t2 = self.process_data()
             except Exception as e:
