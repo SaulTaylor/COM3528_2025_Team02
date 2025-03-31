@@ -379,11 +379,20 @@ class SoundLocalizer:
 
         start_time = rospy.Time.now().to_sec()
         print(f"I'm about to turn for {rotation_time} seconds")
-        while (rospy.Time.now().to_sec() - start_time) < rotation_time:
+        # while (rospy.Time.now().to_sec() - start_time) < rotation_time:
+        #     self.msg_wheels.twist.linear.x = 0.0
+        #     self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed
+        #     self.pub_wheels.publish(self.msg_wheels)
+        #     print(f"I have been rotating for : {rospy.Time.now().to_sec() - start_time} seconds")
+        #     rospy.sleep(0.1)
+
+        current_yaw = self.current_yaw
+        while (np.rad2deg(current_yaw - start_yaw) + 360) % 360 < target_degrees:
             self.msg_wheels.twist.linear.x = 0.0
             self.msg_wheels.twist.angular.z = np.sign(azimuth) * angular_speed
             self.pub_wheels.publish(self.msg_wheels)
             print(f"I have been rotating for : {rospy.Time.now().to_sec() - start_time} seconds")
+            current_yaw = self.current_yaw
             rospy.sleep(0.1)
 
         # Get angle after turning
