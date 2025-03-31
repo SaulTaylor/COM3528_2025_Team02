@@ -210,7 +210,6 @@ class SoundLocalizer:
                 print("No common points exceeding threshold.")
                 return None, None
         except Exception as e:
-            print(f"Error processing data: {e}")
             return None, None
 
     def callback_mics(self, data):
