@@ -138,12 +138,7 @@ class SoundLocalizer:
         # The higher the less sensitive to background noise
         peaks, _ = find_peaks(audio_data, height=0.6)
 
-        if peaks.size == 0:
-            print("No peaks found above height 0.6 in audio input")
-            return None
-        else:
-            print(f"Detected peaks: {peaks}")
-            return peaks
+        return peaks
 
     @staticmethod
     def create_block(index, data, block_size=500):
