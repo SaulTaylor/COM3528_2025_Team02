@@ -44,6 +44,8 @@ ROS topics, audio processing, angle estimation, robot movement, and model infere
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
 
+        self.audio_saved = False 
+
         self.processing_audio = False
 
         self.mic_distance = mic_distance
@@ -185,8 +187,10 @@ class SoundLocalizer:
             # check that common values reach threshold
             if max(common_values_l) > threshold or max(common_values_r) > threshold or max(common_values_t) > threshold:
 
-                print("Common points exceed threshold")
-                self.save_audio_to_wav(self.left_ear_data)
+                if not self.audio_saved:  # Only save audio if it hasn't been saved already
+                    print("Common points exceed threshold")
+                    self.save_audio_to_wav(self.left_ear_data)
+                    self.audio_saved = True  # Set the flag to True after saving audio
 
                 # Get block around max common high point
                 max_common_block_l = self.create_block(max_common_high_point, self.left_ear_data)
@@ -208,6 +212,7 @@ class SoundLocalizer:
                 return t1_1, t2_1
             else:
                 print("No common points exceeding threshold.")
+                self.audio_saved = False
                 return None, None
         except Exception as e:
             return None, None
