@@ -47,7 +47,7 @@ class SoundLocalizer:
         self.mic_distance = mic_distance
 
         # sets up mic buffer
-        self.x_len = 40000
+        self.x_len = 80000
         self.no_of_mics = 4
         self.input_mics = np.zeros((self.x_len, self.no_of_mics))
 
@@ -200,6 +200,8 @@ class SoundLocalizer:
 
                 print(t1_1, t2_1)
 
+                self.save_audio_to_wav()
+
                 return t1_1, t2_1
             else:
                 print("No common points exceeding threshold.")
@@ -267,9 +269,7 @@ class SoundLocalizer:
 
             # # sets averaging to true if none and not already averaging
             # self.averaging = t1 is None and not self.averaging
-        
-        if t1 != None and t2 != None:
-            self.save_audio_to_wav()
+            
 
     def save_audio_to_wav(self, filename="get_emotion_from_audio.wav", mic_index=0, sample_rate=16000):
         """
