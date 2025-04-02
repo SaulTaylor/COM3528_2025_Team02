@@ -191,8 +191,7 @@ class SoundLocalizer:
                     print("Common points exceed threshold")
                     self.save_audio_to_wav(self.left_ear_data)
                     self.audio_saved = True  # Set the flag to True after saving audio
-                
-                if self.audio_saved:
+                elif self.audio_saved:
                     print("Audio already saved, skipping.")
                     return None, None
 
@@ -241,10 +240,10 @@ class SoundLocalizer:
     
         try:
             t1, t2 = self.process_data()  # Process audio data
+            self.processing_audio = False
         except Exception as e:
             t1, t2 = None, None
-        finally:
-            self.processing_audio = False  # Ensure flag is reset
+            self.processing_audio = False
             
 
             # running average for t1 and t2 so long as there are high points
