@@ -113,7 +113,7 @@ class Comforting:
             print("MiRo rotating")
             while rospy.Time.now() < t0 + self.ACTION_DURATION:
                 self.velocity.twist.linear.x = 0
-                self.velocity.twist.angular.z = 0.2
+                self.velocity.twist.angular.z = 0.6
                 self.pub_cmd_vel.publish(self.velocity)
             self.velocity.twist.linear.x = 0
             self.velocity.twist.angular.z = 0
