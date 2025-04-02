@@ -8,6 +8,7 @@ from com3528.msg import DetectEmotionAction, DetectEmotionFeedback, DetectEmotio
 from Models.wave_model.w2v2.miro_model_one import load_model, run_model
 
 class EmotionServer:
+    # Initiates the server.
     def __init__(self):
         self.server = actionlib.SimpleActionServer(
             "detect_emotion", DetectEmotionAction, self.execute_cb, False
@@ -16,6 +17,7 @@ class EmotionServer:
         self.model = load_model()
         rospy.loginfo("Emotion detection server is ready.")
 
+    # Gets the audio file and runs the model to detemrine an emotion.
     def execute_cb(self, goal):
         feedback = DetectEmotionFeedback()
         result = DetectEmotionResult()
@@ -24,7 +26,8 @@ class EmotionServer:
         feedback.current_status = "Saving audio data..."
         self.server.publish_feedback(feedback)
 
-        # Save the audio to a temp file
+        # Saves the audio file to the current working directory.
+        # Audio is saved in a temporary file.
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
             f.write(bytearray(goal.audio_data))
             audio_path = f.name
@@ -33,15 +36,16 @@ class EmotionServer:
         feedback.current_status = "Running emotion detection..."
         self.server.publish_feedback(feedback)
 
-        # Stub detection logic – replace with your own
+        # Stub detection logic
         detected_emotion = self.detect_emotion(audio_path)
 
         feedback.current_status = "Complete"
         self.server.publish_feedback(feedback)
-
+        # Sets the detected emotion as the result and returns it.
         result.detected_emotion = detected_emotion
         self.server.set_succeeded(result)
-
+        
+    # Calls the model to determine an emotion.
     def detect_emotion(self, path):
         prediction = run_model(path, self.model)
         rospy.loginfo(f"Analyzing {path}...")
