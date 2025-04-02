@@ -16,6 +16,7 @@ import pandas as pd
 from scipy.io import wavfile
 import tf.transformations as tf_trans  # Converts quaternion to Euler angles
 from nav_msgs.msg import Odometry
+import kc
 
 
 
@@ -338,6 +339,15 @@ class SoundLocalizer:
         else:
             print("[WARNING] L–Tail delay too small to determine direction confidently → Skipping ")
             # return None  # if you want to skip bad reads
+        
+        print("------------------------------------------------------------------------")
+        body_angle_vector = kc.changeFrameAbs(0, 5, (np.sin(angle_deg), np.cos(angle_deg), 0))
+        _, _, (x_angle_vector, y_angle_vector, _) = body_angle_vector
+        x_angle = np.arcsin(x_angle_vector)
+        y_angle = np.arccos(y_angle_vector)
+        print(f"x_angle: {x_angle}")
+        print(f"y_angle: {y_angle}")
+        print("------------------------------------------------------------------------")
 
         print(f"[INFO] Final estimated direction to sound: {angle_deg:.2f} degrees")
         return np.deg2rad(angle_deg)
