@@ -120,8 +120,8 @@ class SoundLocalizer:
       #pad two signal
       s1 = np.hstack([d0[-113:],pad1])
       s2 = np.hstack([pad2,d1[-113:]])
-      f_s1 = np.fft(s1)
-      f_s2 = np.fft(s2)
+      f_s1 = np.fft.fft(s1)
+      f_s2 = np.fft.fft(s2)
       f_s2c = np.conj(f_s2)
       f_s = f_s1 * f_s2c
       #PHAT
@@ -129,7 +129,7 @@ class SoundLocalizer:
       f_s = f_s/denom
       l = len(d0)/2
       r = l+len(d0)
-      Xgcorr = np.abs(np.ifft(f_s,226))[57:57+113]
+      Xgcorr = np.abs(np.fft.ifft(f_s,226))[57:57+113]
       return Xgcorr
 
     @staticmethod
@@ -199,7 +199,7 @@ class SoundLocalizer:
 
             # Threshold acts as a second filter to height parameter in find_high_peaks
             # Works for the common high points rather than the regular high points
-            threshold = 600
+            threshold = 100
             # check that common values reach threshold
             if max(common_values_l) < threshold or max(common_values_r) < threshold or max(common_values_t) < threshold:
                 return None
@@ -341,7 +341,11 @@ class SoundLocalizer:
             # return None  # if you want to skip bad reads
         
         print("------------------------------------------------------------------------")
-        body_angle_vector = kc.changeFrameAbs(0, 5, (np.sin(angle_deg), np.cos(angle_deg), 0))
+        link_desc_array = [
+            ["body", np.array([0.0, 0.0, 0.0]), "z", 0.0, np.array([0.0, 0.0, 0.0])],
+            ["head", np.array([0.0, 0.0, 0.1]), "z", 0.0, np.array([0.0, 0.0, 0.0])]
+        ]
+        body_angle_vector = kc.KinematicChain(link_desc_array).changeFrameAbs(0, 5, (np.sin(angle_deg), np.cos(angle_deg), 0))
         _, _, (x_angle_vector, y_angle_vector, _) = body_angle_vector
         x_angle = np.arcsin(x_angle_vector)
         y_angle = np.arccos(y_angle_vector)
