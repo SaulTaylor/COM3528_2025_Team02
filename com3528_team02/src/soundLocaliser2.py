@@ -269,7 +269,7 @@ class SoundLocalizer:
             # self.averaging = t1 is None and not self.averaging
         
         if t1 != None and t2 != None:
-            self.save_audio_to_wav(data)
+            self.save_audio_to_wav()
 
     def save_audio_to_wav(self, filename="get_emotion_from_audio.wav", mic_index=0, sample_rate=16000):
         """
@@ -277,7 +277,7 @@ class SoundLocalizer:
         """
         print(f"Saving audio to {filename}...")
         audio_data = self.input_mics[:, mic_index]
-        audio_data = np.int16(audio_data / np.max(np.abs(audio_data)) * 32767)  # Normalize to int16
+        audio_data = np.int16(audio_data / np.max(np.abs(audio_data)) * 32767)[::-1]  # Normalize to int16
         wavfile.write(filename, sample_rate, audio_data)
         print(f"Successfully saved audio to {filename}")
 
