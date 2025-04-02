@@ -15,8 +15,8 @@ from std_msgs.msg import (
 
 class Comforting:
 
-    TICK = 0.02  # Main loop frequency (in secs, default is 50Hz)
-    ACTION_DURATION = rospy.Duration(3.0)  # seconds
+    TICK = 1  # Main loop frequency (in secs, default is 50Hz)
+    ACTION_DURATION = rospy.Duration(5.0)  # seconds
 
     def __init__(self):
         """
