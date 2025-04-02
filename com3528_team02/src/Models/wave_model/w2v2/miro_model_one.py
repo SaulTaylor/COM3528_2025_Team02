@@ -1,16 +1,8 @@
 import audeer
 import audonnx
 import numpy as np
-import pyaudio
-import wave
 import librosa
-import audb
-import pandas as pd
 import joblib
-from sklearn.model_selection import LeaveOneGroupOut, cross_val_score
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
 import os
 import logging
 

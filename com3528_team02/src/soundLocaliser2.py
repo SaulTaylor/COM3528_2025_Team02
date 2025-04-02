@@ -44,14 +44,10 @@ ROS topics, audio processing, angle estimation, robot movement, and model infere
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
 
-        self.audio_saved = False 
-
-        self.processing_audio = False
-
         self.mic_distance = mic_distance
 
         # sets up mic buffer
-        self.x_len = 40000
+        self.x_len = 160000
         self.no_of_mics = 4
         self.input_mics = np.zeros((self.x_len, self.no_of_mics))
 
@@ -138,7 +134,7 @@ class SoundLocalizer:
     def find_high_peaks(audio_data):
         # Height parameter acts as a threshold for which peaks are detected
         # The higher the less sensitive to background noise
-        peaks, _ = find_peaks(audio_data, height=0.6)
+        peaks, _ = find_peaks(audio_data, height=0.7)
 
         return peaks
 
@@ -183,15 +179,10 @@ class SoundLocalizer:
 
             # Threshold acts as a second filter to height parameter in find_high_peaks
             # Works for the common high points rather than the regular high points
-            threshold = 600
+            threshold = 700
             # check that common values reach threshold
             if max(common_values_l) > threshold or max(common_values_r) > threshold or max(common_values_t) > threshold:
-
-                if self.audio_saved == False:  # Only save audio if it hasn't been saved already
-                    print("Common points exceed threshold")
-                    self.save_audio_to_wav(self.left_ear_data)
-                    self.audio_saved = True  # Set the flag to True after saving audio
-
+                
                 # Get block around max common high point
                 max_common_block_l = self.create_block(max_common_high_point, self.left_ear_data)
                 max_common_block_r = self.create_block(max_common_high_point, self.right_ear_data)
@@ -212,7 +203,6 @@ class SoundLocalizer:
                 return t1_1, t2_1
             else:
                 print("No common points exceeding threshold.")
-                self.audio_saved = False
                 return None, None
         except Exception as e:
             return None, None
@@ -232,21 +222,12 @@ class SoundLocalizer:
         self.tail_data = np.flipud(self.input_mics[:, 3])
 
         global av1, av2
-
-        if not self.processing_audio:
-            print("Not processing audio; returning...")
-            return
-
-
-        if not self.rotating:
-            t1, t2, = None, None
-            self.processing_audio = True
-            try:
-                t1, t2 = self.process_data()
-            except Exception as e:
-                t1, t2 = None, None
+    
+        try:
+            t1, t2 = self.process_data()  # Process audio data
+        except Exception as e:
+            t1, t2 = None, None
             
-            self.processing_audio = False
 
             # running average for t1 and t2 so long as there are high points
             # being found then we will assume their from the same source
@@ -286,7 +267,9 @@ class SoundLocalizer:
 
             # # sets averaging to true if none and not already averaging
             # self.averaging = t1 is None and not self.averaging
-
+        
+        if t1 != None and t2 != None:
+            self.save_audio_to_wav()
 
     def save_audio_to_wav(self, filename="get_emotion_from_audio.wav", mic_index=0, sample_rate=16000):
         """
@@ -294,7 +277,7 @@ class SoundLocalizer:
         """
         print(f"Saving audio to {filename}...")
         audio_data = self.input_mics[:, mic_index]
-        audio_data = np.int16(audio_data / np.max(np.abs(audio_data)) * 32767)  # Normalize to int16
+        audio_data = np.int16(audio_data / np.max(np.abs(audio_data)) * 32767)[::-1]  # Normalize to int16
         wavfile.write(filename, sample_rate, audio_data)
         print(f"Successfully saved audio to {filename}")
 
