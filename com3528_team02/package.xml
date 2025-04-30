@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>com3528</name>
+  <version>0.0.1</version>
+  <description>The COM3528 action-based emotion detection package</description>
+
+  <maintainer email="alex.lucas@sheffield.ac.uk">Alex Lucas</maintainer>
+  <url>https://github.com/AlexandrLucas/COM3528/wiki</url>
+  <license>CC BY-NC</license>
+
+  <!-- Build tool -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies for message and action generation -->
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>actionlib</depend>
+  <depend>actionlib_msgs</depend>
+
+  <!-- Optional: If you still want to depend on the example package -->
+  <exec_depend>com3528_examples</exec_depend>
+
+</package>

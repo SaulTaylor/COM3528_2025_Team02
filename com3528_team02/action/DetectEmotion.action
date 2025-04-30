@@ -1,0 +1,8 @@
+# Goal
+uint8[] audio_data
+---
+# Result
+string detected_emotion
+---
+# Feedback
+string current_status
