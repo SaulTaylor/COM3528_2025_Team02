@@ -6,7 +6,6 @@ import joblib
 import os
 import logging
 
-
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -27,21 +26,53 @@ emotion_labels = {
 
 # Classifier training or loading
 script_dir = os.path.dirname(os.path.abspath(__file__))
-classifier_path = os.path.join(script_dir, "ROS_Numpy_1.24.4.pkl")
+#classifier_path = os.path.join(script_dir, "ROS_Numpy_1.24.4.pkl")
+current_os = os.getcwd()
+classifier_path = "/home/student/pkgs/mdk-230105/catkin_ws/src/COM3528_2025_Team02/com3528/src/test_classifier.pkl"
+
+import pickle
+
+with open(classifier_path, "rb") as f:
+    data = joblib.load(f)
+
+# with open(classifier_path, "rb") as f:
+#     print(f.read(10))
+#     data = pickle.load(f)
+
+
 
 def load_model():
-    url = 'https://zenodo.org/record/6221127/files/w2v2-L-robust-12.6bc4a7fd-1.1.0.zip'
-    cache_root = audeer.mkdir('cache')
-    model_root = audeer.mkdir('model')
-    archive_path = audeer.download_url(url, cache_root, verbose=True)
+    # url = 'https://zenodo.org/record/6221127/files/w2v2-L-robust-12.6bc4a7fd-1.1.0.zip'
+    # cache_root = audeer.mkdir('cache')
+    # model_root = audeer.mkdir('model')
+    # archive_path = audeer.download_url(url, cache_root, verbose=True)
 
-    # Check if already extracted
-    if not os.path.exists(os.path.join(model_root, 'model.onnx')):
-        audeer.extract_archive(archive_path, model_root)
 
-    model = audonnx.load(model_root)
+    # # Check if already extracted
+    # if not os.path.exists(os.path.join(model_root, 'model.onnx')):
+    #     audeer.extract_archive(archive_path, model_root)
+
+    # model = audonnx.load(model_root)
+    # return model
+
+    zip_file_path = "COM3528_2025_Team02/com3528/src/Models/wave_model/w2v2/main_model.zip"
+
+    model_root = audeer.mkdir('src/model')
+    model_onnx_path = os.path.join(model_root)
+
+    # model_onnx_path = "/home/student/pkgs/mdk-230105/catkin_ws/src/COM3528_2025_Team02/com3528/src/model/model.onnx"
+
+    # Check and extract if not extracted already
+    if not os.path.exists(model_onnx_path):
+        print("Extracting model...")
+        audeer.extract_archive(zip_file_path, model_root)
+        print("Model extracted.")
+    else:
+        print("Model already extracted.")
+
+    # Load the model from the ONNX file
+    model = audonnx.load(model_onnx_path)
     return model
-
 
 def extract_features(filepath, model):
     logging.info(f"Extracting features from {filepath}")
@@ -67,7 +98,9 @@ def extract_features(filepath, model):
         return None
 
 def run_model(wav_file, model):
+    print(f"here ------- {classifier_path}")
     clf = joblib.load(classifier_path)
+    print("d")
     logging.info("Loaded existing classifier.")
 
     features = extract_features(wav_file, model)
