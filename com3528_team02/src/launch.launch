@@ -1,0 +1,8 @@
+<launch>
+  <node name="mirobridge" pkg="mirobridge" type="mirobridge" output="screen" args="--robot_name <robot_name>"/>
+
+  <!-- basic_audio_text needs to be executable, I added the shebang line, may need to chmod +x src/basic_audio_text.py -->
+  <node name="audio_listener" pkg="com3528_team02" type="basic_audio_text.py" output="screen"/>
+  
+  <node name="emotion_classifier" pkg="com3528_team02" type="detect_emotion_server.py" output="screen"/>
+</launch>
