@@ -220,8 +220,8 @@ class Comforting:
         i = 0
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.cos_joints.data[self.head] = -1.0
-            self.cos_joints.data[self.tail_joint] = -1.0  
+            self.cos_joints.data[self.head] = -0.9
+            self.cos_joints.data[self.tail_joint] = -0.9  
             i += self.TICK  
             rospy.sleep(self.TICK)
         
