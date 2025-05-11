@@ -54,7 +54,7 @@ class Comforting:
             self.happyAction,
             self.sadAction,
             self.angryAction,
-            self.tail
+            self.tail_joint
         ]
 
         # Initialise objects for data storage and publishing
@@ -82,7 +82,7 @@ class Comforting:
             self.left_ear,
             self.right_ear,
             self.head,
-            self.tail,
+            self.tail_joint,
         ) = range(8)
 
         # Give it a sec to make sure everything is initialised
@@ -199,7 +199,7 @@ class Comforting:
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.cos_joints.data[self.head] = -1.0
-            self.cos_joints.data[self.tail] = -1.0
+            self.cos_joints.data[self.tail_joint] = -1.0
             self.velocity.twist.linear.x = 0
             self.velocity.twist.angular.z = 0.7 # How fast the miro rotates
             self.pub_cmd_vel.publish(self.velocity)
@@ -208,7 +208,7 @@ class Comforting:
             rospy.sleep(self.TICK)
         
         self.cos_joints.data[self.head] = 0.0
-        self.cos_joints.data[self.tail] = 0.0
+        self.cos_joints.data[self.tail_joint] = 0.0
     
     def angryAction(self, duration):
          
@@ -221,14 +221,15 @@ class Comforting:
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.cos_joints.data[self.head] = -1.0
-            self.cos_joints.data[self.tail] = -1.0  
+            self.cos_joints.data[self.tail_joint] = -1.0  
             i += self.TICK  
             rospy.sleep(self.TICK)
         
         self.cos_joints.data[self.head] = 0.0
-        self.cos_joints.data[self.tail] = 0.0
+        self.cos_joints.data[self.tail_joint] = 0.0
     
     def calmAndNeutralAction(self, duration):
+
         print("Emotion Received: Calm")
         t0 = rospy.Time.now()
         A = 1.0
@@ -237,7 +238,7 @@ class Comforting:
         i = 0
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.cos_joints.data[self.earWiggle]
+            self.earWiggle(t0)
             if i % 10 == 0:
                 self.cos_joints.data[self.yaw] = 1.0  # right
             elif i % 10 == 5:
@@ -253,25 +254,10 @@ class Comforting:
         self.cos_joints.data[self.yaw] = 0.0
         self.pub_cos.publish(self.cos_joints)
 
-             
-    def loop(self):
-        """
-        Main loop
-        """
-        print("Starting the loop")
-        while not rospy.core.is_shutdown():
-            # Select next action randomly or via Q score with equal probability
-            
-            print("Performing random action")
-            self.r = np.random.randint(0, len(self.actions))
-
-            # Run the selected action and update the action counter N accordingly
-            start_time = rospy.Time.now()
-            self.actions[self.r](start_time)
-
 
 
 # This is run when the script is called directly
 if __name__ == "__main__":
-    main = Comforting()  # Instantiate class
-    main.loop()  # Run the main control loop
+    rospy.init_node("comforting_runner", anonymous=True)
+    duration_seconds = rospy.get_param("~action_duration", 5)
+    main = Comforting(duration_seconds)  # Instantiate class
