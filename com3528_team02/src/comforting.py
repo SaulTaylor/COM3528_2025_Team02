@@ -6,6 +6,8 @@ import rospy
 import miro2 as miro
 from geometry_msgs.msg import Twist, TwistStamped
 import time
+import math
+from sensor_msgs.msg import JointState
 from miro2.lib import wheel_speed2cmd_vel
 from std_msgs.msg import (
     Float32MultiArray,
@@ -30,8 +32,6 @@ class Comforting:
         topic_root = "/" + os.getenv("MIRO_ROBOT_NAME")
 
         # Initialise a new ROS node to communicate with MiRo
-        if not rospy.is_shutdown():
-            rospy.init_node("comforting", anonymous=True)
 
         # Define ROS publishers
         self.pub_cmd_vel = rospy.Publisher(
@@ -43,6 +43,9 @@ class Comforting:
         self.pub_illum = rospy.Publisher(
             topic_root + "/control/illum", UInt32MultiArray, queue_size=0
         )
+        self.pub_kin = rospy.Publisher(
+             topic_root + "/control/kinematic_joints", JointState, queue_size=0
+        )
 
         # List of action functions
         ##NOTE Try writing your own action functions and adding them here
@@ -51,17 +54,18 @@ class Comforting:
             self.tailWag,
             self.rotate,
             self.raiseHead,
-            self.happyAction,
-            self.sadAction,
+            self.happyAction,   
             self.angryAction,
-            self.tail_joint
         ]
 
         # Initialise objects for data storage and publishing
         self.light_array = None
         self.velocity = TwistStamped()
         self.cos_joints = Float32MultiArray()
-        self.cos_joints.data = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.cos_joints.data = [0.0] * 6
+        self.kin_joints = JointState()
+        self.kin_joints.name = ["tilt", "lift", "yaw", "pitch"]
+        self.kin_joints.position = [0.0, math.radians(34.0), 0.0, 0.0]
         self.illum = UInt32MultiArray()
         self.illum.data = [
             0xFFFFFFFF,
@@ -81,9 +85,8 @@ class Comforting:
             self.right_eye,
             self.left_ear,
             self.right_ear,
-            self.head,
-            self.tail_joint,
-        ) = range(8)
+            #self.tail_joint,
+        ) = range(6)
 
         # Give it a sec to make sure everything is initialised
         rospy.sleep(1.0)  
@@ -104,19 +107,20 @@ class Comforting:
             self.cos_joints.data[self.right_ear] = 0.0
             self.pub_cos.publish(self.cos_joints)
     
-    def raiseHead(self,):
+    def raiseHead(self, t0):
             print("MiRo raising head")
+            self.kin_joints.position[self.pitch] = 0
+            self.pub_kin.publish(self.kin_joints)
             A = 1.0
             w = 2 * np.pi * 0.2
             f = lambda t: A * np.cos(w * t)
             i = 0
             t0 = rospy.Time.now()
             while rospy.Time.now() < t0 + self.ACTION_DURATION:
-                self.cos_joints.data[self.head] = f(i)
-                self.pub_cos.publish(self.cos_joints)
+                self.kin_joints.position[self.pitch] = -1
+                self.pub_kin.publish(self.kin_joints)
                 i += self.TICK
                 rospy.sleep(self.TICK)
-            self.cos_joints.data[self.head] = 0.0
             self.pub_cos.publish(self.cos_joints)
 
     def tailWag(self, t0):
@@ -158,7 +162,7 @@ class Comforting:
             self.cos_joints.data[self.wag] = f(i)
 
             if i % 5 == 0:
-                self.cos_joints.data[self.head] = 1.0
+                self.raiseHead(t0)
             elif i % 5 == 2:
                 self.cos_joints.data[self.head] = 0.0
 
@@ -199,7 +203,7 @@ class Comforting:
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.cos_joints.data[self.head] = -1.0
-            self.cos_joints.data[self.tail_joint] = -1.0
+            self.cos_joints.data[self.wag] = -1.0
             self.velocity.twist.linear.x = 0
             self.velocity.twist.angular.z = 0.7 # How fast the miro rotates
             self.pub_cmd_vel.publish(self.velocity)
@@ -208,7 +212,7 @@ class Comforting:
             rospy.sleep(self.TICK)
         
         self.cos_joints.data[self.head] = 0.0
-        self.cos_joints.data[self.tail_joint] = 0.0
+        self.cos_joints.data[self.wag] = 0.0
     
     def angryAction(self, duration):
          
@@ -218,15 +222,25 @@ class Comforting:
         w = 2 * np.pi * 0.2
         f = lambda t: A * np.cos(w * t)
         i = 0
-
+        wag_phase = 0.0
+        rate = rospy.Rate(20)
+        self.raiseHead(t0)
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.cos_joints.data[self.head] = -0.9
-            self.cos_joints.data[self.tail_joint] = -0.9  
+            self.yaw = 1
+            wag_phase += np.pi * 2.0 / 20.0
+            if wag_phase >= 2 * np.pi:
+                wag_phase -= 2 * np.pi
+            self.cos_joints.data[self.droop] = 0.0
+            self.cos_joints.data[self.wag] = np.sin(wag_phase) * 0.5 + 0.5
+            self.pub_cos.publish(self.cos_joints)
             i += self.TICK  
-            rospy.sleep(self.TICK)
+            rate.sleep()
+            print("Loop inside")
+        print("Finsihed loop")
         
-        self.cos_joints.data[self.head] = 0.0
-        self.cos_joints.data[self.tail_joint] = 0.0
+        self.cos_joints.data[self.droop] = 0.0
+        self.cos_joints.data[self.wag] = 0.0
+        self.pub_cos.publish(self.cos_joints)
     
     def calmAndNeutralAction(self, duration):
 

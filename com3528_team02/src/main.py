@@ -8,10 +8,12 @@ import rospy
 if __name__ == "__main__":
     rospy.init_node("emotion_and_comforting_node", anonymous=True)
     em_client = EmotionClient()
-    ac_client = Comforting(5)
+    ac_client = Comforting(3)
 
     while True:
         em_client.send_wav("testAudio.wav")
+        print("Sent wav file")
         ac_client.angryAction(10)
+        print("Performed action")
         time.sleep(5)
 
