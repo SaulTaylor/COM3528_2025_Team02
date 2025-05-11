@@ -188,9 +188,9 @@ class Comforting:
         self.pub_cos.publish(self.cos_joints)
         self.pub_cmd_vel.publish(self.velocity)
         
-    def fearAction(self, duration):
+    def fearAndSadnessAction(self, duration):
 
-        print("Emotion Received: Sadness")
+        print("Emotion Received: Fear")
         t0 = rospy.Time.now()
         A = 1.0
         w = 2 * np.pi * 0.2
@@ -204,7 +204,6 @@ class Comforting:
             self.velocity.twist.angular.z = 0.7 # How fast the miro rotates
             self.pub_cmd_vel.publish(self.velocity)
             self.pub_cos.publish(self.cos_joints) 
-            self.pub_cos.publish(self.cos_joints)   
             i += self.TICK  
             rospy.sleep(self.TICK)
         
@@ -229,7 +228,7 @@ class Comforting:
         self.cos_joints.data[self.head] = 0.0
         self.cos_joints.data[self.tail] = 0.0
     
-    def calmAction(self, duration):
+    def calmAndNeutralAction(self, duration):
         print("Emotion Received: Calm")
         t0 = rospy.Time.now()
         A = 1.0
