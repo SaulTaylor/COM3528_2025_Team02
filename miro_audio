@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+
+import numpy as np
+import os
+import rospy
+from std_msgs.msg import Int16MultiArray
+from scipy.io import wavfile
+
+class SimpleAudioRecorder:
+    def __init__(self, mic_index=0, sample_rate=16000, duration=5):
+        self.sample_rate = sample_rate
+        self.duration = duration
+        self.mic_index = mic_index
+        self.samples_to_collect = self.sample_rate * self.duration
+        self.no_of_mics = 4
+
+        self.audio_buffer = np.zeros((0, self.no_of_mics), dtype=np.int16)
+        topic_base_name = "/" + os.getenv("MIRO_ROBOT_NAME")
+        
+        rospy.Subscriber(topic_base_name + "/sensors/mics", Int16MultiArray, self.callback_mics)
+        print(f"Recording for {self.duration} seconds...")
+
+    def callback_mics(self, msg):
+        data = np.asarray(msg.data).reshape((self.no_of_mics, 500)).T  # Shape: (500, 4)
+        data = np.flipud(data)  # Flip time order
+        self.audio_buffer = np.vstack((self.audio_buffer, data))
+
+        if self.audio_buffer.shape[0] >= self.samples_to_collect:
+            self.save_audio()
+            rospy.signal_shutdown("Recording complete.")
+
+    def save_audio(self, filename="miro_audio.wav"):
+        audio = self.audio_buffer[:self.samples_to_collect, self.mic_index]
+        audio = np.int16(audio / np.max(np.abs(audio)) * 32767)
+        wavfile.write(filename, self.sample_rate, audio)
+        print(f"Audio saved to {filename}")
+
+
+if __name__ == '__main__':
+    rospy.init_node('miro_audio_recorder')
+    recorder = SimpleAudioRecorder()
+    rospy.spin()
