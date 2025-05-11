@@ -4,7 +4,7 @@ import rospy
 import actionlib
 import tempfile
 
-from com3528.msg import DetectEmotionAction, DetectEmotionFeedback, DetectEmotionResult
+from com3528_2.msg import DetectEmotionAction, DetectEmotionFeedback, DetectEmotionResult
 from Models.wave_model.w2v2.miro_model_one import load_model, run_model
 
 class EmotionServer:
@@ -14,6 +14,7 @@ class EmotionServer:
             "detect_emotion", DetectEmotionAction, self.execute_cb, False
         )
         self.server.start()
+        print("running load")
         self.model = load_model()
         rospy.loginfo("Emotion detection server is ready.")
 
