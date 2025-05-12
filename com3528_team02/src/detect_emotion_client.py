@@ -20,6 +20,7 @@ class EmotionClient:
     # Sends the .wav file to the server as bytes.
     def send_wav(self, wav_path):
         goal = DetectEmotionGoal()
+        print(f"goal: {goal}")
 
         # Read .wav file as bytes
         with open(wav_path, "rb") as f:
@@ -27,11 +28,17 @@ class EmotionClient:
         # Convert bytes to uint8[]
         goal.audio_data = list(wav_data) 
 
+        print("sending goal")
         self.client.send_goal(goal, feedback_cb=self.feedback_cb)
         self.client.wait_for_result()
 
         result = self.client.get_result()
-        rospy.loginfo(f"Detected Emotion: {result.detected_emotion}")
+
+        if result:
+            rospy.loginfo(f"Detected Emotion: {result.detected_emotion}")
+            return result.detected_emotion
+        else:
+            print("no result", result)
 
     def feedback_cb(self, feedback: DetectEmotionFeedback):
         rospy.loginfo(f"Feedback: {feedback.current_status}")

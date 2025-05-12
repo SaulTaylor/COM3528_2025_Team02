@@ -1,5 +1,6 @@
 from detect_emotion_client import EmotionClient
 from comforting import Comforting
+from miro_audio import SimpleAudioRecorder
 import time
 
 import rospy
@@ -7,13 +8,23 @@ import rospy
 
 if __name__ == "__main__":
     rospy.init_node("emotion_and_comforting_node", anonymous=True)
+    #
+    audio_client = SimpleAudioRecorder()
+    rospy.spin()
     em_client = EmotionClient()
     ac_client = Comforting(3)
-
+    # rospy.spin()
     while True:
-        em_client.send_wav("testAudio.wav")
-        print("Sent wav file")
+        rospy.sleep(5)
+        #audio_client.save_audio()
+
+
+        print("about to call server")
+        f = em_client.send_wav("miro_audio.wav")
+        print(f)
+        
+        
         ac_client.angryAction(10)
         print("Performed action")
-        time.sleep(5)
+        rospy.sleep(2)
 

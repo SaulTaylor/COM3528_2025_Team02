@@ -20,34 +20,41 @@ class EmotionServer:
 
     # Gets the audio file and runs the model to detemrine an emotion.
     def execute_cb(self, goal):
-        feedback = DetectEmotionFeedback()
-        result = DetectEmotionResult()
+        print("in callback")
+        rospy.loginfo("execute_cb started")
+        try: 
+            feedback = DetectEmotionFeedback()
+            result = DetectEmotionResult()
 
-        rospy.loginfo("Received audio data.")
-        feedback.current_status = "Saving audio data..."
-        self.server.publish_feedback(feedback)
+            rospy.loginfo("Received audio data.")
+            feedback.current_status = "Saving audio data..."
+            self.server.publish_feedback(feedback)
 
-        # Saves the audio file to the current working directory.
-        # Audio is saved in a temporary file.
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
-            f.write(bytearray(goal.audio_data))
-            audio_path = f.name
+            # Saves the audio file to the current working directory.
+            # Audio is saved in a temporary file.
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+                f.write(bytearray(goal.audio_data))
+                audio_path = f.name
 
-        rospy.loginfo(f"Saved audio to: {audio_path}")
-        feedback.current_status = "Running emotion detection..."
-        self.server.publish_feedback(feedback)
+            rospy.loginfo(f"Saved audio to: {audio_path}")
+            feedback.current_status = "Running emotion detection..."
+            self.server.publish_feedback(feedback)
 
-        # Stub detection logic
-        detected_emotion = self.detect_emotion(audio_path)
+            # Stub detection logic
+            detected_emotion = self.detect_emotion(audio_path)
 
-        feedback.current_status = "Complete"
-        self.server.publish_feedback(feedback)
-        # Sets the detected emotion as the result and returns it.
-        result.detected_emotion = detected_emotion
-        self.server.set_succeeded(result)
-        
+            feedback.current_status = "Complete"
+            self.server.publish_feedback(feedback)
+            # Sets the detected emotion as the result and returns it.
+            result.detected_emotion = detected_emotion
+            self.server.set_succeeded(result)
+        except Exception as e:
+            rospy.logerr(f"Error in execute_cb: {e}")
+            self.server.set_aborted()
+            
     # Calls the model to determine an emotion.
     def detect_emotion(self, path):
+        print("faafa")
         prediction = run_model(path, self.model)
         rospy.loginfo(f"Analyzing {path}...")
         rospy.loginfo(prediction)
