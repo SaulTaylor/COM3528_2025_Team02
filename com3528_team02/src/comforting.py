@@ -88,6 +88,9 @@ class Comforting:
             #self.tail_joint,
         ) = range(6)
 
+        self.pub_cos.publish(self.cos_joints)
+        self.pub_kin.publish(self.kin_joints)
+
         # Give it a sec to make sure everything is initialised
         rospy.sleep(1.0)  
 
@@ -168,26 +171,13 @@ class Comforting:
             self.cos_joints.data[self.wag] = np.sin(wag_phase) * 0.5 + 0.5
             self.pub_cos.publish(self.cos_joints)
 
-            if i % 5 == 0:
-                self.kin_joints.position[self.pitch] = 1.0
-            elif i % 5 == 2:
-                self.kin_joints.position[self.pitch] = 0.0
+            self.kin_joints.position[self.pitch] = -1.0
 
-            if i % 5 == 0:
-                self.kin_joints.position[self.yaw] = f(i)
-            elif i % 5 == 2:
-                self.kin_joints.position[self.yaw] = 0.0
+            self.kin_joints.position[self.yaw] = 1/2 * (np.sin(wag_phase) * 0.5 + 0.5)
 
-            if i % 7 == 0:
-                self.earWiggle(t0)
-            elif i % 7 == 2:
-                self.cos_joints.data[self.left_ear] = 0.0
-                self.cos_joints.data[self.right_ear] = 0.0
+            self.earWiggle(t0)
 
-            if i % 6 == 0:
-                self.velocity.twist.angular.z = 1
-            else:
-                self.velocity.twist.angular.z = 0.0
+            self.velocity.twist.angular.z = 1
 
             self.pub_cos.publish(self.cos_joints)
             self.pub_cmd_vel.publish(self.velocity)
@@ -215,9 +205,11 @@ class Comforting:
         i = 0
         rate = rospy.Rate(20)
 
+
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.kin_joints.position[self.pitch] = -1.0
-            self.cos_joints.data[self.droop] = -1.0
+            self.kin_joints.position[self.pitch] = 1
+            self.cos_joints.data[self.left_ear] = -1
+            self.cos_joints.data[self.right_ear] = -1
             self.velocity.twist.linear.x = 0
             self.velocity.twist.angular.z = 0.4 # How fast the miro rotates
             self.pub_cmd_vel.publish(self.velocity)
@@ -227,7 +219,6 @@ class Comforting:
             rate.sleep()
         
         self.kin_joints.position[self.pitch] = 0.0
-        self.cos_joints.data[self.wag] = 0.0
         self.velocity.twist.linear.x = 0.0
         self.velocity.twist.angular.z = 0.0 
         self.pub_cmd_vel.publish(self.velocity)
@@ -268,22 +259,23 @@ class Comforting:
          
         print("Emotion Received: Anger")
         t0 = rospy.Time.now()
-        A = 1.0
-        w = 2 * np.pi * 0.2
-        f = lambda t: A * np.cos(w * t)
+        A = 1.0  # maximum value
+        T_total = 10.0  # total duration for the linear increase
+
+        f = lambda t: (A / T_total) * t if t <= T_total else A
         i = 0
         rate = rospy.Rate(20)
-        self.kin_joints.position[self.pitch] = 0.0
-        self.pub_kin.publish(self.kin_joints)
+
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.kin_joints.position[self.pitch] = -1.0
+            self.kin_joints.position[self.pitch] = f(i)
             self.pub_kin.publish(self.kin_joints)
             i += self.TICK  
             rate.sleep()
 
-        
         self.cos_joints.data[self.droop] = 0.0
         self.cos_joints.data[self.wag] = 0.0
+        self.kin_joints.position[self.pitch] = 0.0
+        self.pub_kin.publish(self.kin_joints)
         self.pub_cos.publish(self.cos_joints)
     
     def calmAndNeutralAction(self, duration):
@@ -295,15 +287,16 @@ class Comforting:
         f = lambda t: A * np.cos(w * t)
         i = 0
         rate = rospy.Rate(20)
+        self.kin_joints.position[self.yaw] = 0.0  # return to center
+        self.pub_kin.publish(self.kin_joints)
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.earWiggle(t0)
             if i % 10 == 0:
                 self.kin_joints.position[self.yaw] = 1.0  # right
-            elif i % 10 == 5:
+            elif i % 10 == 10 and self.kin_joints.position[self.yaw] == 1.0:
                 self.kin_joints.position[self.yaw] = -1.0  # left
-            elif i % 10 == 7:
-                self.kin_joints.position[self.yaw] = 0.0  # return to center
+
             
             self.pub_kin.publish(self.kin_joints)
 
