@@ -117,7 +117,7 @@ class Comforting:
             i = 0
             t0 = rospy.Time.now()
             while rospy.Time.now() < t0 + self.ACTION_DURATION:
-                self.kin_joints.position[self.pitch] = -1
+                self.kin_joints.position[self.pitch] = 1
                 self.pub_kin.publish(self.kin_joints)
                 i += self.TICK
                 rospy.sleep(self.TICK)
@@ -150,49 +150,62 @@ class Comforting:
     def happyAction(self, duration):
         print("Emotion Received: Happiness")
         t0 = rospy.Time.now()
-        end_time = t0 + rospy.Duration(duration)
 
         A = 1.0
         w = 2 * np.pi * 1  # 1 Hz = 1 wag/sec
         f = lambda t: A * np.cos(w * t)
         i = 0
+        wag_phase = 0.0
+        rate = rospy.Rate(20)
 
-        while rospy.Time.now() < end_time:
+        while rospy.Time.now() < t0 + rospy.Duration(duration):
 
-            self.cos_joints.data[self.wag] = f(i)
+            self.yaw = 1
+            wag_phase += np.pi * 2.0 / 20.0
+            if wag_phase >= 2 * np.pi:
+                wag_phase -= 2 * np.pi
+            self.cos_joints.data[self.droop] = 0.0
+            self.cos_joints.data[self.wag] = np.sin(wag_phase) * 0.5 + 0.5
+            self.pub_cos.publish(self.cos_joints)
 
             if i % 5 == 0:
-                self.raiseHead(t0)
+                self.kin_joints.position[self.pitch] = 1.0
             elif i % 5 == 2:
-                self.cos_joints.data[self.head] = 0.0
+                self.kin_joints.position[self.pitch] = 0.0
+
+            if i % 5 == 0:
+                self.kin_joints.position[self.yaw] = f(i)
+            elif i % 5 == 2:
+                self.kin_joints.position[self.yaw] = 0.0
 
             if i % 7 == 0:
-                self.cos_joints.data[self.left_ear] = 1.0
-                self.cos_joints.data[self.right_ear] = -1.0
+                self.earWiggle(t0)
             elif i % 7 == 2:
                 self.cos_joints.data[self.left_ear] = 0.0
                 self.cos_joints.data[self.right_ear] = 0.0
 
             if i % 6 == 0:
-                self.velocity.twist.angular.z = 0.5
+                self.velocity.twist.angular.z = 1
             else:
                 self.velocity.twist.angular.z = 0.0
 
             self.pub_cos.publish(self.cos_joints)
             self.pub_cmd_vel.publish(self.velocity)
+            self.pub_kin.publish(self.kin_joints)
 
             i += self.TICK
-            rospy.sleep(self.TICK)
+            rate.sleep()
 
         self.cos_joints.data[self.wag] = 0.0
-        self.cos_joints.data[self.head] = 0.0
+        self.kin_joints.position[self.pitch] = 0.0
         self.cos_joints.data[self.left_ear] = 0.0
         self.cos_joints.data[self.right_ear] = 0.0
         self.velocity.twist.angular.z = 0.0
         self.pub_cos.publish(self.cos_joints)
         self.pub_cmd_vel.publish(self.velocity)
+        self.pub_kin.publish(self.pub_kin)
         
-    def fearAndSadnessAction(self, duration):
+    def fearAction(self, duration):
 
         print("Emotion Received: Fear")
         t0 = rospy.Time.now()
@@ -200,19 +213,56 @@ class Comforting:
         w = 2 * np.pi * 0.2
         f = lambda t: A * np.cos(w * t)
         i = 0
+        rate = rospy.Rate(20)
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.cos_joints.data[self.head] = -1.0
-            self.cos_joints.data[self.wag] = -1.0
+            self.kin_joints.position[self.pitch] = -1.0
+            self.cos_joints.data[self.droop] = -1.0
             self.velocity.twist.linear.x = 0
-            self.velocity.twist.angular.z = 0.7 # How fast the miro rotates
+            self.velocity.twist.angular.z = 0.4 # How fast the miro rotates
             self.pub_cmd_vel.publish(self.velocity)
+            self.pub_cos.publish(self.cos_joints) 
+            self.pub_kin.publish(self.kin_joints)
+            i += self.TICK  
+            rate.sleep()
+        
+        self.kin_joints.position[self.pitch] = 0.0
+        self.cos_joints.data[self.wag] = 0.0
+        self.velocity.twist.linear.x = 0.0
+        self.velocity.twist.angular.z = 0.0 
+        self.pub_cmd_vel.publish(self.velocity)
+        self.pub_kin.publish(self.kin_joints)
+        self.pub_cos.publish(self.cos_joints)
+    
+    def sadAction(self, duration):
+        print("Emotion Received: Sadness")
+        t0 = rospy.Time.now()
+        A = 1.0
+        w = 2 * np.pi * 0.2
+        f = lambda t: A * np.cos(w * t)
+        i = 0
+        rate = rospy.Rate(20)
+
+        while rospy.Time.now() < t0 + rospy.Duration(duration):
+            self.kin_joints.position[self.pitch] = -1.0
+            self.cos_joints.data[self.droop] = -1.0
+            self.cos_joints.data[self.left_ear] = 1.0
+            self.cos_joints.data[self.right_ear] = 1.0
+            if i % 6 == 0:
+                self.velocity.twist.angular.z = 0.5
+            else:
+                self.velocity.twist.angular.z = 0.0
+            self.pub_cmd_vel.publish(self.velocity)
+            self.pub_kin.publish(self.kin_joints)
             self.pub_cos.publish(self.cos_joints) 
             i += self.TICK  
             rospy.sleep(self.TICK)
         
-        self.cos_joints.data[self.head] = 0.0
+        self.kin_joints.position[self.pitch] = 0.0
         self.cos_joints.data[self.wag] = 0.0
+        self.pub_kin.publish(self.kin_joints)
+        self.pub_cos.publish(self.cos_joints)
+
     
     def angryAction(self, duration):
          
@@ -222,21 +272,15 @@ class Comforting:
         w = 2 * np.pi * 0.2
         f = lambda t: A * np.cos(w * t)
         i = 0
-        wag_phase = 0.0
         rate = rospy.Rate(20)
-        self.raiseHead(t0)
+        self.kin_joints.position[self.pitch] = 0.0
+        self.pub_kin.publish(self.kin_joints)
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.yaw = 1
-            wag_phase += np.pi * 2.0 / 20.0
-            if wag_phase >= 2 * np.pi:
-                wag_phase -= 2 * np.pi
-            self.cos_joints.data[self.droop] = 0.0
-            self.cos_joints.data[self.wag] = np.sin(wag_phase) * 0.5 + 0.5
-            self.pub_cos.publish(self.cos_joints)
+            self.kin_joints.position[self.pitch] = -1.0
+            self.pub_kin.publish(self.kin_joints)
             i += self.TICK  
             rate.sleep()
-            print("Loop inside")
-        print("Finsihed loop")
+
         
         self.cos_joints.data[self.droop] = 0.0
         self.cos_joints.data[self.wag] = 0.0
@@ -250,19 +294,21 @@ class Comforting:
         w = 2 * np.pi * 0.2
         f = lambda t: A * np.cos(w * t)
         i = 0
+        rate = rospy.Rate(20)
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.earWiggle(t0)
             if i % 10 == 0:
-                self.cos_joints.data[self.yaw] = 1.0  # right
+                self.kin_joints.position[self.yaw] = 1.0  # right
             elif i % 10 == 5:
-                self.cos_joints.data[self.yaw] = -1.0  # left
+                self.kin_joints.position[self.yaw] = -1.0  # left
             elif i % 10 == 7:
-                self.cos_joints.data[self.yaw] = 0.0  # return to center
-            self.pub_cos.publish(self.cos_joints)
+                self.kin_joints.position[self.yaw] = 0.0  # return to center
+            
+            self.pub_kin.publish(self.kin_joints)
 
             i += self.TICK
-            rospy.sleep(self.TICK)
+            rate.sleep()
         
         self.cos_joints.data[self.wag] = 0.0
         self.cos_joints.data[self.yaw] = 0.0
