@@ -12,4 +12,6 @@ Then run train_classifier.py - some file paths might need to be changed, and the
 
 Then run roscore, rosrun com3528_2 detect_emotion_server.py, and then python3 main.py in three terminal instances inside the src directory
 
+Note - there is an additional contributor jjtKenji who is not part of our team whos account was accidentally used to push code from one of the robotics laptop
+
 
