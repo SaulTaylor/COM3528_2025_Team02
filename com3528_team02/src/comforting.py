@@ -196,7 +196,8 @@ class Comforting:
         # Reset to neutral at the end
         self.kin_joints.position[self.yaw] = 0.0
         self.pub_kin.publish(self.kin_joints)
-        # clear any COS controls (if needed)
+        self.kin_joints.position[self.pitch] = 0.0
+        self.kin_joints.position[self.lift] = 0.0
         self.cos_joints.data[self.wag] = 0.0
         self.cos_joints.data[self.left_ear] = 0.0
         self.cos_joints.data[self.right_ear] = 0.0
