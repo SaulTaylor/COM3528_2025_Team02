@@ -223,12 +223,11 @@ class Comforting:
         i = 0
         rate = rospy.Rate(20)
 
-
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.kin_joints.position[self.pitch] = 1.0
             self.kin_joints.position[self.lift] = 1.0
             self.cos_joints.data[self.droop] = 1.0
-            while rospy.Time.now() < t0 + 0.5* (rospy.Duration(duration)):
+            while rospy.Time.now() < t0 + rospy.Duration(duration/2):
                 self.velocity.twist.linear.x = 0
                 self.velocity.twist.angular.z = 0.4 # How fast the miro rotates
                 self.pub_cmd_vel.publish(self.velocity)
