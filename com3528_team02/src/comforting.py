@@ -173,17 +173,10 @@ class Comforting:
             self.cos_joints.data[self.wag] = np.sin(wag_phase) * 0.5 + 0.5
             self.pub_cos.publish(self.cos_joints)
 
-            if i % 20 == 0:
-                self.kin_joints.position[self.pitch] = 1.0
-                self.kin_joints.position[self.lift] = 1.0
-            elif i % 20 == 2:
-                self.kin_joints.position[self.pitch] = 0.0
-                self.kin_joints.position[self.lift] = 0.0
+            self.kin_joints.position[self.pitch] = -1.0
+            self.kin_joints.position[self.lift] = -1.0
 
-            if i % 20 == 0:
-                self.kin_joints.position[self.yaw] = f(i)
-            elif i % 20 == 2:
-                self.kin_joints.position[self.yaw] = 0.0
+            self.kin_joints.position[self.yaw] = f(i)
 
             if i % 30 == 0:
                 self.earWiggle(t0)
