@@ -175,6 +175,9 @@ class Comforting:
             elapsed = (now - last_change_time).to_sec()
             self.velocity.twist.angular.z = 0.2
             self.pub_cmd_vel.publish(self.velocity)
+            self.kin_joints.position[self.pitch] = -1.0
+            self.kin_joints.position[self.lift] = -1.0
+            self.pub_kin.publish(self.kin_joints)
             if elapsed >= next_change_secs:
                 current_yaw = random.choice([-1.0, 0.0, 1.0])
                 self.kin_joints.position[self.yaw] = current_yaw
