@@ -186,7 +186,7 @@ class Comforting:
                 next_change_secs = random.uniform(0.5, 2.0)
                 last_change_time = now
 
-            self.cos_joints.data[self.wag] = now
+            self.cos_joints.data[self.wag] = f(i)
             self.pub_cos.publish(self.cos_joints)
 
             self.earWiggle(now)
@@ -195,7 +195,6 @@ class Comforting:
 
         # Reset to neutral at the end
         self.kin_joints.position[self.yaw] = 0.0
-        self.pub_kin.publish(self.kin_joints)
         self.kin_joints.position[self.pitch] = 0.0
         self.kin_joints.position[self.lift] = 0.0
         self.cos_joints.data[self.wag] = 0.0
@@ -203,6 +202,7 @@ class Comforting:
         self.cos_joints.data[self.right_ear] = 0.0
         self.pub_cos.publish(self.cos_joints)
         self.pub_cmd_vel.publish(self.velocity)
+        self.pub_kin.publish(self.kin_joints)
         
     def fearAction(self, duration):
 
