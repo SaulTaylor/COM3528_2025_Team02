@@ -312,20 +312,25 @@ class Comforting:
         self.kin_joints.position[self.yaw] = 0.0  # return to center
         self.pub_kin.publish(self.kin_joints)
 
-        while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.earWiggle(t0)
-            if i % 20 == 5:
-                self.kin_joints.position[self.yaw] = 1.0  # right
-            elif i % 10 == 10 and self.kin_joints.position[self.yaw] == 1.0:
-                self.kin_joints.position[self.yaw] = -1.0  # left
+        count = 0
+        cycle = 20
 
-            
+        while rospy.Time.now() < t0 + rospy.Duration(duration):
+            phase = count % cycle
+            self.earWiggle(t0)
+            if 5 <= phase < 10:
+                self.kin_joints.position[self.yaw] =  1.0
+            elif 15 <= phase < 20:
+                self.kin_joints.position[self.yaw] = -1.0
+            else:
+                self.kin_joints.position[self.yaw] =  0.0
+
+            self.earWiggle(rospy.Time.now())
             self.pub_kin.publish(self.kin_joints)
 
-            i += self.TICK
+            count += 1
             rate.sleep()
         
-        self.cos_joints.data[self.wag] = 0.0
         self.cos_joints.data[self.yaw] = 0.0
         self.pub_cos.publish(self.cos_joints)
 
