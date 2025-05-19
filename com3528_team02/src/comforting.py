@@ -154,57 +154,40 @@ class Comforting:
 
     def happyAction(self, duration):
         print("Emotion Received: Happiness")
-        t0 = rospy.Time.now()
+        start_time = rospy.Time.now()
+        end_time   = start_time + rospy.Duration(duration)
+        rate       = rospy.Rate(20)
 
-        A = 1.0
-        w = 2 * np.pi * 1  # 1 Hz = 1 wag/sec
-        f = lambda t: A * np.cos(w * t)
-        i = 0
-        wag_phase = 0.0
-        rate = rospy.Rate(20)
+        current_yaw = 0.0
+        self.kin_joints.position[self.yaw] = current_yaw
+        self.pub_kin.publish(self.kin_joints)
 
-        while rospy.Time.now() < t0 + rospy.Duration(duration):
+        next_change_secs = random.uniform(0.5, 2.0)
+        last_change_time = rospy.Time.now()
 
-            self.yaw = 1
-            wag_phase += np.pi * 2.0 / 20.0
-            if wag_phase >= 2 * np.pi:
-                wag_phase -= 2 * np.pi
-            self.cos_joints.data[self.droop] = 0.0
-            self.cos_joints.data[self.wag] = np.sin(wag_phase) * 0.5 + 0.5
-            self.pub_cos.publish(self.cos_joints)
+        while rospy.Time.now() < end_time:
+            now = rospy.Time.now()
+            elapsed = (now - last_change_time).to_sec()
+            if elapsed >= next_change_secs:
+                current_yaw = random.choice([-1.0, 0.0, 1.0])
+                self.kin_joints.position[self.yaw] = current_yaw
+                self.pub_kin.publish(self.kin_joints)
 
-            self.kin_joints.position[self.pitch] = -1.0
-            self.kin_joints.position[self.lift] = -1.0
+                next_change_secs = random.uniform(0.5, 2.0)
+                last_change_time = now
 
-            self.kin_joints.position[self.yaw] = f(i)
+            self.earWiggle(now)
 
-            if i % 30 == 0:
-                self.earWiggle(t0)
-            elif i % 30 == 2:
-                self.cos_joints.data[self.left_ear] = 0.0
-                self.cos_joints.data[self.right_ear] = 0.0
-
-            if i % 30 == 0:
-                self.velocity.twist.angular.z = 1
-            else:
-                self.velocity.twist.angular.z = 0.0
-
-            self.pub_cos.publish(self.cos_joints)
-            self.pub_cmd_vel.publish(self.velocity)
-            self.pub_kin.publish(self.kin_joints)
-
-            i += self.TICK
             rate.sleep()
 
+        # Reset to neutral at the end
+        self.kin_joints.position[self.yaw] = 0.0
+        self.pub_kin.publish(self.kin_joints)
+        # clear any COS controls (if needed)
         self.cos_joints.data[self.wag] = 0.0
-        self.kin_joints.position[self.pitch] = 0.0
-        self.kin_joints.position[self.lift] = 0.0
         self.cos_joints.data[self.left_ear] = 0.0
         self.cos_joints.data[self.right_ear] = 0.0
-        self.velocity.twist.angular.z = 0.0
         self.pub_cos.publish(self.cos_joints)
-        self.pub_cmd_vel.publish(self.velocity)
-        self.pub_kin.publish(self.pub_kin)
         
     def fearAction(self, duration):
 
@@ -309,24 +292,18 @@ class Comforting:
         while rospy.Time.now() < end_time:
             now = rospy.Time.now()
             elapsed = (now - last_change_time).to_sec()
-
-            # Time to pick a new random head direction & wiggle?
             if elapsed >= next_change_secs:
-                # Choose new yaw: left, right, or center
                 current_yaw = random.choice([-1.0, 0.0, 1.0])
                 self.kin_joints.position[self.yaw] = current_yaw
                 self.pub_kin.publish(self.kin_joints)
 
-                # Schedule next change 0.5–2 s from now
                 next_change_secs = random.uniform(0.5, 2.0)
                 last_change_time = now
 
-            # Always wiggle ears each loop
             self.earWiggle(now)
 
             rate.sleep()
 
-        # Reset to neutral at the end
         self.kin_joints.position[self.yaw] = 0.0
         self.pub_kin.publish(self.kin_joints)
         # clear any COS controls (if needed)
