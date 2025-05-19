@@ -155,8 +155,8 @@ class Comforting:
     def happyAction(self, duration):
         print("Emotion Received: Happiness")
         start_time = rospy.Time.now()
-        end_time   = start_time + rospy.Duration(duration)
-        rate       = rospy.Rate(20)
+        end_time = start_time + rospy.Duration(duration)
+        rate = rospy.Rate(20)
 
         current_yaw = 0.0
         self.kin_joints.position[self.yaw] = current_yaw
@@ -165,9 +165,16 @@ class Comforting:
         next_change_secs = random.uniform(0.5, 2.0)
         last_change_time = rospy.Time.now()
 
+        A = 1.0
+        w = 2 * np.pi * 0.2
+        f = lambda t: A * np.cos(w * t)
+        i = 0
+
         while rospy.Time.now() < end_time:
             now = rospy.Time.now()
             elapsed = (now - last_change_time).to_sec()
+            self.velocity.twist.angular.z = 0.2
+            self.pub_cmd_vel.publish(self.velocity)
             if elapsed >= next_change_secs:
                 current_yaw = random.choice([-1.0, 0.0, 1.0])
                 self.kin_joints.position[self.yaw] = current_yaw
@@ -175,6 +182,8 @@ class Comforting:
 
                 next_change_secs = random.uniform(0.5, 2.0)
                 last_change_time = now
+
+            self.cos_joints.data[self.wag] = f(i)
 
             self.earWiggle(now)
 
@@ -188,6 +197,7 @@ class Comforting:
         self.cos_joints.data[self.left_ear] = 0.0
         self.cos_joints.data[self.right_ear] = 0.0
         self.pub_cos.publish(self.cos_joints)
+        self.pub_cmd_vel.publish(self.velocity)
         
     def fearAction(self, duration):
 
@@ -279,8 +289,8 @@ class Comforting:
     def calmAndNeutralAction(self, duration):
         print("Emotion Received: Calm")
         start_time = rospy.Time.now()
-        end_time   = start_time + rospy.Duration(duration)
-        rate       = rospy.Rate(20)
+        end_time = start_time + rospy.Duration(duration)
+        rate  = rospy.Rate(20)
 
         current_yaw = 0.0
         self.kin_joints.position[self.yaw] = current_yaw
