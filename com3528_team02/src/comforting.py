@@ -48,7 +48,6 @@ class Comforting:
         )
 
         # List of action functions
-        ##NOTE Try writing your own action functions and adding them here
         self.actions = [
             self.earWiggle,
             self.tailWag,
@@ -56,6 +55,9 @@ class Comforting:
             self.raiseHead,
             self.happyAction,   
             self.angryAction,
+            self.sadAction,
+            self.calmAndNeutralAction,
+            self.fearAction,
         ]
 
         # Initialise objects for data storage and publishing
@@ -85,7 +87,6 @@ class Comforting:
             self.right_eye,
             self.left_ear,
             self.right_ear,
-            #self.tail_joint,
         ) = range(6)
 
         self.pub_cos.publish(self.cos_joints)
@@ -171,13 +172,28 @@ class Comforting:
             self.cos_joints.data[self.wag] = np.sin(wag_phase) * 0.5 + 0.5
             self.pub_cos.publish(self.cos_joints)
 
-            self.kin_joints.position[self.pitch] = -1.0
+            if i % 20 == 0:
+                self.kin_joints.position[self.pitch] = 1.0
+                self.kin_joints.position[self.lift] = 1.0
+            elif i % 20 == 2:
+                self.kin_joints.position[self.pitch] = 0.0
+                self.kin_joints.position[self.lift] = 0.0
 
-            self.kin_joints.position[self.yaw] = 1/2 * (np.sin(wag_phase) * 0.5 + 0.5)
+            if i % 20 == 0:
+                self.kin_joints.position[self.yaw] = f(i)
+            elif i % 20 == 2:
+                self.kin_joints.position[self.yaw] = 0.0
 
-            self.earWiggle(t0)
+            if i % 30 == 0:
+                self.earWiggle(t0)
+            elif i % 30 == 2:
+                self.cos_joints.data[self.left_ear] = 0.0
+                self.cos_joints.data[self.right_ear] = 0.0
 
-            self.velocity.twist.angular.z = 1
+            if i % 30 == 0:
+                self.velocity.twist.angular.z = 1
+            else:
+                self.velocity.twist.angular.z = 0.0
 
             self.pub_cos.publish(self.cos_joints)
             self.pub_cmd_vel.publish(self.velocity)
@@ -188,6 +204,7 @@ class Comforting:
 
         self.cos_joints.data[self.wag] = 0.0
         self.kin_joints.position[self.pitch] = 0.0
+        self.kin_joints.position[self.lift] = 0.0
         self.cos_joints.data[self.left_ear] = 0.0
         self.cos_joints.data[self.right_ear] = 0.0
         self.velocity.twist.angular.z = 0.0
@@ -207,9 +224,9 @@ class Comforting:
 
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.kin_joints.position[self.pitch] = 1
-            self.cos_joints.data[self.left_ear] = -1
-            self.cos_joints.data[self.right_ear] = -1
+            self.kin_joints.position[self.pitch] = -1.0
+            self.kin_joints.position[self.lift] = -1.0
+            self.cos_joints.data[self.droop] = -1.0
             self.velocity.twist.linear.x = 0
             self.velocity.twist.angular.z = 0.4 # How fast the miro rotates
             self.pub_cmd_vel.publish(self.velocity)
@@ -219,6 +236,8 @@ class Comforting:
             rate.sleep()
         
         self.kin_joints.position[self.pitch] = 0.0
+        self.kin_joints.position[self.lift] = 0.0
+        self.cos_joints.data[self.wag] = 0.0
         self.velocity.twist.linear.x = 0.0
         self.velocity.twist.angular.z = 0.0 
         self.pub_cmd_vel.publish(self.velocity)
@@ -236,6 +255,7 @@ class Comforting:
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.kin_joints.position[self.pitch] = -1.0
+            self.kin_joints.position[self.lift] = -1.0
             self.cos_joints.data[self.droop] = -1.0
             self.cos_joints.data[self.left_ear] = 1.0
             self.cos_joints.data[self.right_ear] = 1.0
@@ -250,13 +270,13 @@ class Comforting:
             rospy.sleep(self.TICK)
         
         self.kin_joints.position[self.pitch] = 0.0
+        self.kin_joints.position[self.lift] = 0.0
         self.cos_joints.data[self.wag] = 0.0
         self.pub_kin.publish(self.kin_joints)
         self.pub_cos.publish(self.cos_joints)
 
     
     def angryAction(self, duration):
-         
         print("Emotion Received: Anger")
         t0 = rospy.Time.now()
         A = 1.0  # maximum value
@@ -267,12 +287,14 @@ class Comforting:
         rate = rospy.Rate(20)
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.kin_joints.position[self.pitch] = f(i)
+            self.kin_joints.position[self.pitch] = -1.0
+            self.kin_joints.position[self.lift] = -1.0
             self.pub_kin.publish(self.kin_joints)
             i += self.TICK  
             rate.sleep()
 
         self.cos_joints.data[self.droop] = 0.0
+        self.kin_joints.position[self.lift] = 0.0
         self.cos_joints.data[self.wag] = 0.0
         self.kin_joints.position[self.pitch] = 0.0
         self.pub_kin.publish(self.kin_joints)
@@ -292,7 +314,7 @@ class Comforting:
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
             self.earWiggle(t0)
-            if i % 10 == 0:
+            if i % 20 == 5:
                 self.kin_joints.position[self.yaw] = 1.0  # right
             elif i % 10 == 10 and self.kin_joints.position[self.yaw] == 1.0:
                 self.kin_joints.position[self.yaw] = -1.0  # left
