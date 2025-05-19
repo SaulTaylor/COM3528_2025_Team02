@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import random
 import os
 import numpy as np
 import rospy
@@ -301,37 +302,45 @@ class Comforting:
         self.pub_cos.publish(self.cos_joints)
     
     def calmAndNeutralAction(self, duration):
-
         print("Emotion Received: Calm")
-        t0 = rospy.Time.now()
-        A = 1.0
-        w = 2 * np.pi * 0.2
-        f = lambda t: A * np.cos(w * t)
-        i = 0
-        rate = rospy.Rate(20)
-        self.kin_joints.position[self.yaw] = 0.0  # return to center
+        start_time = rospy.Time.now()
+        end_time   = start_time + rospy.Duration(duration)
+        rate       = rospy.Rate(20)
+
+        current_yaw = 0.0
+        self.kin_joints.position[self.yaw] = current_yaw
         self.pub_kin.publish(self.kin_joints)
 
-        count = 0
-        cycle = 20
+        next_change_secs = random.uniform(0.5, 2.0)
+        last_change_time = rospy.Time.now()
 
-        while rospy.Time.now() < t0 + rospy.Duration(duration):
-            phase = count % cycle
-            self.earWiggle(t0)
-            if 5 <= phase < 10:
-                self.kin_joints.position[self.yaw] =  1.0
-            elif 15 <= phase < 20:
-                self.kin_joints.position[self.yaw] = -1.0
-            else:
-                self.kin_joints.position[self.yaw] =  0.0
+        while rospy.Time.now() < end_time:
+            now = rospy.Time.now()
+            elapsed = (now - last_change_time).to_sec()
 
-            self.earWiggle(rospy.Time.now())
-            self.pub_kin.publish(self.kin_joints)
+            # Time to pick a new random head direction & wiggle?
+            if elapsed >= next_change_secs:
+                # Choose new yaw: left, right, or center
+                current_yaw = random.choice([-1.0, 0.0, 1.0])
+                self.kin_joints.position[self.yaw] = current_yaw
+                self.pub_kin.publish(self.kin_joints)
 
-            count += 1
+                # Schedule next change 0.5–2 s from now
+                next_change_secs = random.uniform(0.5, 2.0)
+                last_change_time = now
+
+            # Always wiggle ears each loop
+            self.earWiggle(now)
+
             rate.sleep()
-        
-        self.cos_joints.data[self.yaw] = 0.0
+
+        # Reset to neutral at the end
+        self.kin_joints.position[self.yaw] = 0.0
+        self.pub_kin.publish(self.kin_joints)
+        # clear any COS controls (if needed)
+        self.cos_joints.data[self.wag] = 0.0
+        self.cos_joints.data[self.left_ear] = 0.0
+        self.cos_joints.data[self.right_ear] = 0.0
         self.pub_cos.publish(self.cos_joints)
 
 
