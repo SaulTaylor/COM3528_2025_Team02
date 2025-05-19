@@ -187,6 +187,7 @@ class Comforting:
                 last_change_time = now
 
             self.cos_joints.data[self.wag] = f(i)
+            self.pub_cos.publish(self.cos_joints)
 
             self.earWiggle(now)
 
