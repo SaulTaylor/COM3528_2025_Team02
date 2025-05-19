@@ -186,7 +186,7 @@ class Comforting:
                 next_change_secs = random.uniform(0.5, 2.0)
                 last_change_time = now
 
-            self.cos_joints.data[self.wag] = f(i)
+            self.cos_joints.data[self.wag] = now
             self.pub_cos.publish(self.cos_joints)
 
             self.earWiggle(now)
