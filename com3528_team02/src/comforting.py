@@ -268,8 +268,8 @@ class Comforting:
     def angryAction(self, duration):
         print("Emotion Received: Anger")
         t0 = rospy.Time.now()
-        A = 1.0  # maximum value
-        T_total = 10.0  # total duration for the linear increase
+        A = 1.0  
+        T_total = 10.0 
 
         f = lambda t: (A / T_total) * t if t <= T_total else A
         i = 0
