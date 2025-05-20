@@ -131,7 +131,7 @@ class Comforting:
     def tailWag(self, t0):
             print("MiRo wagging tail")
             A = 1.0
-            w = 2 * np.pi * 0.2 # Change depending on how fast tail wags
+            w = 2 * np.pi * 2.0 # Change depending on how fast tail wags
             f = lambda t: A * np.cos(w * t)
             i = 0
             while rospy.Time.now() < t0 + self.ACTION_DURATION:
@@ -154,10 +154,10 @@ class Comforting:
 
     def happyAction(self, duration):
         print("Emotion Received: Happiness")
+        self.TICK = 0.09
         start_time = rospy.Time.now()
         end_time = start_time + rospy.Duration(duration)
-        rate = rospy.Rate(20)
-
+        rate = rospy.Rate(50)
         current_yaw = 0.0
         self.kin_joints.position[self.yaw] = current_yaw
         self.pub_kin.publish(self.kin_joints)
@@ -166,29 +166,30 @@ class Comforting:
         last_change_time = rospy.Time.now()
 
         A = 1.0
-        w = 2 * np.pi * 0.2
+        w = 2 * np.pi * 2.0
         f = lambda t: A * np.cos(w * t)
         i = 0
 
         while rospy.Time.now() < end_time:
             now = rospy.Time.now()
             elapsed = (now - last_change_time).to_sec()
-            self.velocity.twist.angular.z = 0.2
-            self.pub_cmd_vel.publish(self.velocity)
             self.kin_joints.position[self.pitch] = -1.0
-            self.kin_joints.position[self.lift] = -1.0
+            self.velocity.twist.linear.x = 0
+            self.velocity.twist.angular.z = 0.9 # How fast the miro rotates
+            self.cos_joints.data[self.wag] = f(i)
+            self.pub_cos.publish(self.cos_joints)
+            self.pub_cmd_vel.publish(self.velocity)
             self.pub_kin.publish(self.kin_joints)
             if elapsed >= next_change_secs:
+                current_lift = random.choice([-1.0, 0.0, 1.0])
+                self.kin_joints.position[self.lift] = current_lift
                 current_yaw = random.choice([-1.0, 0.0, 1.0])
                 self.kin_joints.position[self.yaw] = current_yaw
                 self.pub_kin.publish(self.kin_joints)
 
                 next_change_secs = random.uniform(0.5, 2.0)
                 last_change_time = now
-
-            self.tailWag(now)
-            self.earWiggle(now)
-
+            i += self.TICK
             rate.sleep()
 
         # Reset to neutral at the end
@@ -268,24 +269,30 @@ class Comforting:
     def angryAction(self, duration):
         print("Emotion Received: Anger")
         t0 = rospy.Time.now()
-        A = 1.0  
-        T_total = 10.0 
-
-        f = lambda t: (A / T_total) * t if t <= T_total else A
+        A = 1.0
+        w = 2 * np.pi * 0.2
+        f = lambda t: A * np.cos(w * t)
         i = 0
         rate = rospy.Rate(20)
 
         while rospy.Time.now() < t0 + rospy.Duration(duration):
-            self.kin_joints.position[self.pitch] = -1.0
-            self.kin_joints.position[self.lift] = -1.0
+            self.kin_joints.position[self.pitch] = 1.0
+            self.kin_joints.position[self.lift] = 1.0
+            self.cos_joints.data[self.droop] = 1.0
+            self.velocity.twist.linear.x = 0
+            self.velocity.twist.angular.z = 0.2 # How fast the miro rotates
+            self.pub_cmd_vel.publish(self.velocity)
+            self.pub_cos.publish(self.cos_joints) 
             self.pub_kin.publish(self.kin_joints)
             i += self.TICK  
             rate.sleep()
-
-        self.cos_joints.data[self.droop] = 0.0
+        
+        self.kin_joints.position[self.pitch] = 0.0
         self.kin_joints.position[self.lift] = 0.0
         self.cos_joints.data[self.wag] = 0.0
-        self.kin_joints.position[self.pitch] = 0.0
+        self.velocity.twist.linear.x = 0.0
+        self.velocity.twist.angular.z = 0.0 
+        self.pub_cmd_vel.publish(self.velocity)
         self.pub_kin.publish(self.kin_joints)
         self.pub_cos.publish(self.cos_joints)
     

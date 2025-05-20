@@ -31,7 +31,7 @@ if __name__ == "__main__":
         'surprised': ac_client.happyAction
     }
 
-    audio_files = ["angry.wav"]
+    audio_files = ["angry_tue(3).wav"]
 
     for audio in audio_files:
 
